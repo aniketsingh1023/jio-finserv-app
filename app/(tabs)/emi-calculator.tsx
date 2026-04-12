@@ -338,13 +338,11 @@ export default function EMICalculatorScreen() {
       {/* Animated Header */}
       <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
         <LinearGradient
-          colors={[DESIGN_COLORS.darkNavy, '#1A1E2E']}
+          colors={[DESIGN_COLORS.warmMustard, '#af6b0c']}
           style={styles.headerGradient}
         >
           <View style={styles.headerContent}>
-            <View style={styles.headerIcon}>
-              <Ionicons name="calculator" size={32} color={DESIGN_COLORS.goldenYellow} />
-            </View>
+            
             <Text style={styles.headerTitle}>EMI Calculator</Text>
             <Text style={styles.headerSubtitle}>
               Plan your loan with confidence
