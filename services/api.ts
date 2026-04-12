@@ -1,4 +1,5 @@
 import axios from "axios";
+import * as tokenStorage from "../utils/storage";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -14,6 +15,19 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
   timeout: 10000,
+});
+
+// Add token to request headers if available
+api.interceptors.request.use(async (config) => {
+  try {
+    const token = await tokenStorage.getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (error) {
+    console.error("Error retrieving token:", error);
+  }
+  return config;
 });
 
 api.interceptors.request.use((config) => {

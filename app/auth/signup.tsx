@@ -84,8 +84,8 @@ export default function SignupScreen() {
         formData.phone || undefined
       );
 
-      // Navigate to main app on successful signup
-      router.replace('/(tabs)');
+      // Navigate to profile on successful signup
+      router.replace('/(tabs)/profile');
     } catch (err: any) {
       // Show error message
       Alert.alert('Signup Failed', err.message || 'Unable to create account');

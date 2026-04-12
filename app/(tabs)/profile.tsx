@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -6,24 +6,78 @@ import {
   Text,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useAuth } from '@/store/authStore';
 import { Colors } from '@/constants/colors';
 import { Icon } from '@/components/Icon';
-import { Ionicons } from "@expo/vector-icons";
+import * as loanService from '@/services/loan.service';
 
-interface UserProfile {
-  isLoggedIn: boolean;
-  name?: string;
-  email?: string;
-  phone?: string;
+interface LoanApp {
+  id: string;
+  referenceId: string;
+  loanType: string;
+  loanAmount: number;
+  status: string;
+  createdAt: string;
 }
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    isLoggedIn: false,
-  });
+  const { user, isAuthenticated, logout, isLoading: authLoading } = useAuth();
+  
+  const [applications, setApplications] = useState<LoanApp[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Fetch applications when user becomes authenticated
+  const fetchApplications = async () => {
+    if (!isAuthenticated) return;
+    try {
+      setIsLoading(true);
+      const response = await loanService.getMyLoanApplications();
+      setApplications(response.applications as LoanApp[]);
+    } catch (error: any) {
+      console.error('Failed to fetch applications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchApplications();
+    }, [isAuthenticated])
+  );
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchApplications();
+    setIsRefreshing(false);
+  };
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', onPress: () => {} },
+      {
+        text: 'Logout',
+        onPress: async () => {
+          await logout();
+          router.replace('/(tabs)/profile');
+        },
+      },
+    ]);
+  };
+
+  const handleEditProfile = () => {
+    router.push('/profile/edit');
+  };
+
+  const handleStartNewApplication = () => {
+    router.push('/applications/new');
+  };
 
   const handleLogin = () => {
     router.push('/auth/login');
@@ -33,23 +87,32 @@ export default function ProfileScreen() {
     router.push('/auth/signup');
   };
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', onPress: () => {} },
-      {
-        text: 'Logout',
-        onPress: () => {
-          setUserProfile({ isLoggedIn: false });
-        },
-      },
-    ]);
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
-  const handleEditProfile = () => {
-    Alert.alert('Edit Profile', 'Redirecting to edit profile...');
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return '#FF9500';
+      case 'approved':
+        return '#34C759';
+      case 'rejected':
+        return '#FF3B30';
+      case 'processing':
+        return '#007AFF';
+      default:
+        return Colors.textSecondary;
+    }
   };
 
-  if (!userProfile.isLoggedIn) {
+  // Logged out state
+  if (!isAuthenticated) {
     return (
       <ScrollView style={styles.container}>
         {/* Header */}
@@ -90,7 +153,7 @@ export default function ProfileScreen() {
         <View style={styles.benefitsSection}>
           <Text style={styles.benefitsTitle}>Why Sign In?</Text>
           <BenefitItem
-           iconName="info"
+            iconName="info"
             title="Track Applications"
             desc="Monitor the status of your loan applications"
           />
@@ -100,173 +163,205 @@ export default function ProfileScreen() {
             desc="View and manage all your active loans"
           />
           <BenefitItem
-            iconName="download"
-            title="View History"
-            desc="Access your complete transaction history"
+            iconName="profile"
+            title="Your Profile"
+            desc="Keep your personal and financial information up to date"
           />
-          <BenefitItem
-            iconName="notification"
-            title="Get Notifications"
-            desc="Receive important updates about your loans"
-          />
-          <BenefitItem
-            iconName="settings"
-          title="Account Settings"
-           desc="Manage your profile and preferences"
-        />
         </View>
-
-        <View style={styles.bottomSpacing} />
       </ScrollView>
     );
   }
 
+  // Logged in state
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Profile</Text>
       </View>
 
-      {/* Profile Card */}
+      {/* User Profile Card */}
       <View style={styles.profileCard}>
+        {/* Avatar */}
         <View style={styles.avatarContainer}>
-          <Icon name="profile" size={48} color={Colors.primary} />
+          <Text style={styles.avatarText}>
+            {user?.name?.charAt(0).toUpperCase() || 'U'}
+          </Text>
         </View>
 
-        <Text style={styles.profileName}>Rajesh Kumar</Text>
-        <Text style={styles.profileEmail}>rajesh.kumar@email.com</Text>
+        {/* User Info */}
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{user?.name || 'User'}</Text>
+          <Text style={styles.userEmail}>{user?.email}</Text>
+          
+          {user?.phone && (
+            <Text style={styles.userPhone}>📱 {user.phone}</Text>
+          )}
+        </View>
 
+        {/* Edit Button */}
         <TouchableOpacity
           style={styles.editButton}
           onPress={handleEditProfile}
           activeOpacity={0.7}
         >
-          <Text style={styles.editButtonText}>Edit Profile</Text>
+          <Icon name="info" size={20} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Account Information */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account Information</Text>
+      {/* Profile Details Section */}
+      <View style={styles.detailsSection}>
+        <Text style={styles.sectionTitle}>Profile Details</Text>
+        
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Name</Text>
+          <Text style={styles.detailValue}>{user?.name || '-'}</Text>
+        </View>
 
-        <InfoItem label="Name" value="Rajesh Kumar" />
-        <InfoItem label="Email" value="rajesh.kumar@email.com" />
-        <InfoItem label="Phone" value="+91-9876-543-210" />
-        <InfoItem label="Member Since" value="January 2024" />
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Email</Text>
+          <Text style={styles.detailValue}>{user?.email || '-'}</Text>
+        </View>
+
+        {user?.phone && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Phone</Text>
+            <Text style={styles.detailValue}>{user.phone}</Text>
+          </View>
+        )}
+
+        {user?.gender && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Gender</Text>
+            <Text style={styles.detailValue}>{user.gender}</Text>
+          </View>
+        )}
+
+        {user?.address && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Address</Text>
+            <Text style={styles.detailValue}>{user.address}</Text>
+          </View>
+        )}
+
+        {user?.city && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>City</Text>
+            <Text style={styles.detailValue}>{user.city}</Text>
+          </View>
+        )}
       </View>
 
-      {/* My Loans */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>My Loans</Text>
+      {/* My Applications Section */}
+      <View style={styles.applicationsSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>My Applications</Text>
+          <TouchableOpacity
+            onPress={handleStartNewApplication}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.newAppButton}>+ New</Text>
+          </TouchableOpacity>
+        </View>
 
-        <LoanItem
-          loanType="Personal Loan"
-          amount="₹500,000"
-          emi="₹8,500"
-          status="Active"
-        />
-        <LoanItem
-          loanType="Home Loan"
-          amount="₹25,00,000"
-          emi="₹50,000"
-          status="Active"
-        />
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        ) : applications.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Icon name="info" size={48} color={Colors.textTertiary} />
+            <Text style={styles.emptyStateTitle}>No Applications Found</Text>
+            <Text style={styles.emptyStateText}>
+              Start your first loan application today
+            </Text>
+            <TouchableOpacity
+              style={styles.startAppButton}
+              onPress={handleStartNewApplication}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.startAppButtonText}>Start New Application</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.applicationsList}>
+            {applications.map((app) => (
+              <View key={app.id} style={styles.applicationCard}>
+                <View style={styles.appHeader}>
+                  <View style={styles.appTitleContainer}>
+                    <Text style={styles.appLoanType}>
+                      {app.loanType}
+                    </Text>
+                    <Text style={styles.appRefId}>Ref: {app.referenceId.slice(0, 8)}</Text>
+                  </View>
+                  <View 
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: getStatusColor(app.status) }
+                    ]}
+                  >
+                    <Text style={styles.statusText}>{app.status}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.appDetails}>
+                  <View style={styles.appDetailRow}>
+                    <Text style={styles.appDetailLabel}>Amount:</Text>
+                    <Text style={styles.appDetailValue}>
+                      ₹{app.loanAmount.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <View style={styles.appDetailRow}>
+                    <Text style={styles.appDetailLabel}>Applied on:</Text>
+                    <Text style={styles.appDetailValue}>
+                      {formatDate(app.createdAt)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
-      {/* Settings */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Settings</Text>
-
-        <SettingItem iconName="security" label="Change Password" onPress={() => {}} />
-        <SettingItem iconName="notification" label="Notifications" onPress={() => {}} />
-        <SettingItem iconName="download" label="Documents" onPress={() => {}} />
-        <SettingItem iconName="phone-call" label="Support" onPress={() => {}} />
-      </View>
-
-      {/* Logout */}
+      {/* Logout Button */}
       <TouchableOpacity
         style={styles.logoutButton}
         onPress={handleLogout}
         activeOpacity={0.7}
       >
+        <Icon name="profile" size={20} color="#FF3B30" />
         <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
 
-      <View style={styles.bottomSpacing} />
+      {/* Footer spacing */}
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
-const BenefitItem = ({
-  iconName,
-  title,
-  desc,
-}: {
+interface BenefitItemProps {
   iconName: string;
   title: string;
   desc: string;
-}) => (
-  <View style={styles.benefitItem}>
-    <Icon name={iconName as any} size={24} color={Colors.primary} />
-    <View style={styles.benefitContent}>
-      <Text style={styles.benefitTitle}>{title}</Text>
-      <Text style={styles.benefitDesc}>{desc}</Text>
-    </View>
-  </View>
-);
+}
 
-const InfoItem = ({ label, value }: { label: string; value: string }) => (
-  <View style={styles.infoItem}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue}>{value}</Text>
-  </View>
-);
-
-const LoanItem = ({
-  loanType,
-  amount,
-  emi,
-  status,
-}: {
-  loanType: string;
-  amount: string;
-  emi: string;
-  status: string;
-}) => (
-  <View style={styles.loanItem}>
-    <View style={styles.loanHeader}>
-      <Text style={styles.loanType}>{loanType}</Text>
-      <Text style={[styles.loanStatus, styles.loanStatusActive]}>{status}</Text>
-    </View>
-    <View style={styles.loanDetails}>
-      <View style={styles.loanDetail}>
-        <Text style={styles.loanDetailLabel}>Amount</Text>
-        <Text style={styles.loanDetailValue}>{amount}</Text>
+function BenefitItem({ iconName, title, desc }: BenefitItemProps) {
+  return (
+    <View style={styles.benefitItem}>
+      <View style={styles.benefitIconContainer}>
+        <Icon name={iconName} size={24} color={Colors.primary} />
       </View>
-      <View style={styles.loanDetail}>
-        <Text style={styles.loanDetailLabel}>Monthly EMI</Text>
-        <Text style={styles.loanDetailValue}>{emi}</Text>
+      <View style={styles.benefitContent}>
+        <Text style={styles.benefitTitle}>{title}</Text>
+        <Text style={styles.benefitDesc}>{desc}</Text>
       </View>
     </View>
-  </View>
-);
-
-const SettingItem = ({
-  iconName,
-  label,
-  onPress,
-}: {
-  iconName: string;
-  label: string;
-  onPress: () => void;
-}) => (
-  <TouchableOpacity style={styles.settingItem} onPress={onPress} activeOpacity={0.7}>
-    <Icon name={iconName as any} size={20} color={Colors.primary} />
-    <Text style={styles.settingLabel}>{label}</Text>
-    <Icon name="arrow-right" size={18} color={Colors.textTertiary} />
-  </TouchableOpacity>
-);
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -274,261 +369,325 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 24,
     paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: Colors.white,
+    color: Colors.textPrimary,
   },
+  
+  // Logged out state
   promptContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 32,
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
   },
   promptIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.accent,
+    backgroundColor: Colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   promptTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 8,
     textAlign: 'center',
+    marginBottom: 8,
   },
   promptText: {
     fontSize: 14,
     color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
     marginBottom: 24,
+    lineHeight: 20,
   },
   primaryButton: {
     width: '100%',
     backgroundColor: Colors.primary,
-    paddingVertical: 14,
     borderRadius: 8,
+    paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 12,
   },
   primaryButtonText: {
-    color: Colors.white,
-    fontWeight: '700',
     fontSize: 16,
+    fontWeight: '600',
+    color: Colors.white,
   },
   secondaryButton: {
     width: '100%',
     backgroundColor: Colors.white,
-    paddingVertical: 14,
     borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: Colors.primary,
+    paddingVertical: 14,
+    alignItems: 'center',
   },
   secondaryButtonText: {
-    color: Colors.primary,
-    fontWeight: '700',
     fontSize: 16,
+    fontWeight: '600',
+    color: Colors.primary,
   },
   benefitsSection: {
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 24,
   },
   benefitsTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.textPrimary,
     marginBottom: 16,
   },
   benefitItem: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 14,
+    marginBottom: 16,
+    alignItems: 'flex-start',
   },
-  benefitIcon: {
-    fontSize: 24,
+  benefitIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    marginTop: 2,
   },
   benefitContent: {
     flex: 1,
   },
   benefitTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.textPrimary,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   benefitDesc: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 18,
   },
+
+  // Logged in state
   profileCard: {
-    marginHorizontal: 16,
-    marginVertical: 20,
+    flexDirection: 'row',
+    margin: 16,
+    padding: 16,
     backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 24,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.accent,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: Colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  avatarContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,t: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+    marginRight: 12,
   },
-  avatar: {
-    fontSize: 36,
+  avatarText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.white,
   },
-  profileName: {
-    fontSize: 18,
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.textPrimary,
     marginBottom: 4,
   },
-  profileEmail: {
-    fontSize: 13,
+  userEmail: {
+    fontSize: 12,
     color: Colors.textSecondary,
-    marginBottom: 16,
+    marginBottom: 4,
+  },
+  userPhone: {
+    fontSize: 12,
+    color: Colors.textSecondary,
   },
   editButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: Colors.accent,
-    borderRadius: 6,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  editButtonText: {
-    color: Colors.darkCharcoal,
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  section: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+
+  detailsSection: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 16,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: Colors.textPrimary,
+    marginBottom: 16,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  detailLabel: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  detailValue: {
+    fontSize: 13,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+
+  applicationsSection: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  infoItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  infoValue: {
-    fontSize: 13,
-    color: Colors.textPrimary,
+  newAppButton: {
+    fontSize: 14,
     fontWeight: '600',
-  },
-  loanItem: {
-    backgroundColor: Colors.white,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  loanHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  loanType: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  loanStatus: {
-    fontSize: 11,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  loanStatusActive: {
-    backgroundColor: Colors.accent,
-    color: Colors.darkCharcoal,
-  },
-  loanDetails: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  loanDetail: {
-    flex: 1,
-  },
-  loanDetailLabel: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    marginBottom: 2,
-  },
-  loanDetailValue: {
-    fontSize: 13,
-    fontWeight: '700',
     color: Colors.primary,
   },
-  settingItem: {
-    flexDirection: 'row',
+  loadingContainer: {
+    height: 150,
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  emptyState: {
     backgroundColor: Colors.white,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginTop: 12,
     marginBottom: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
-  settingIcon: {
-    fontSize: 18,
-    marginRight: 12,
-  },
-  settingLabel: {
-    flex: 1,
+  emptyStateText: {
     fontSize: 13,
-    fontWeight: '500',
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  startAppButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  startAppButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.white,
+  },
+  applicationsList: {
+    gap: 12,
+  },
+  applicationCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+  },
+  appHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  appTitleContainer: {
+    flex: 1,
+  },
+  appLoanType: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  appRefId: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  appDetails: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: 12,
+  },
+  appDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  appDetailLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  appDetailValue: {
+    fontSize: 12,
+    fontWeight: '600',
     color: Colors.textPrimary,
   },
-  settingArrow: {
-    fontSize: 14,
-    color: Colors.textTertiary,
-  },
+
   logoutButton: {
+    flexDirection: 'row',
     marginHorizontal: 16,
-    marginVertical: 20,
+    marginBottom: 16,
     paddingVertical: 12,
-    backgroundColor: Colors.error,
+    paddingHorizontal: 16,
+    backgroundColor: '#FF3B30' + '15',
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   logoutButtonText: {
-    color: Colors.white,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  bottomSpacing: {
-    height: 80,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF3B30',
   },
 });
+
+          

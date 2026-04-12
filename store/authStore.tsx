@@ -14,6 +14,11 @@ export interface AuthUser {
   email: string;
   name: string;
   phone: string | null;
+  gender?: string | null;
+  dob?: string | null;
+  address?: string | null;
+  city?: string | null;
+  pincode?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,12 +30,14 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  isSessionRestored: boolean;
 
   // Actions
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   restoreSession: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   clearError: () => void;
 }
 
@@ -39,13 +46,16 @@ type AuthAction =
   | { type: 'SET_USER'; payload: { user: AuthUser; token: string } }
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'CLEAR_ERROR' }
-  | { type: 'LOGOUT' };
+  | { type: 'LOGOUT' }
+  | { type: 'UPDATE_USER'; payload: AuthUser }
+  | { type: 'SESSION_RESTORED' };
 
 interface AuthState {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
   error: string | null;
+  isSessionRestored: boolean;
 }
 
 const initialState: AuthState = {
@@ -53,6 +63,7 @@ const initialState: AuthState = {
   token: null,
   isLoading: false,
   error: null,
+  isSessionRestored: false,
 };
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
@@ -73,6 +84,10 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       return { ...state, error: null };
     case 'LOGOUT':
       return { ...state, user: null, token: null, isLoading: false };
+    case 'UPDATE_USER':
+      return { ...state, user: action.payload };
+    case 'SESSION_RESTORED':
+      return { ...state, isSessionRestored: true, isLoading: false };
     default:
       return state;
   }
@@ -151,6 +166,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   /**
+   * Refresh user data from server
+   */
+  const refreshUser = useCallback(async () => {
+    if (!state.token) {
+      return;
+    }
+    try {
+      const response = await authService.getCurrentUserProfile();
+      dispatch({
+        type: 'UPDATE_USER',
+        payload: response.user,
+      });
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  }, [state.token]);
+
+  /**
    * Restore session from stored token
    * Call this on app startup
    */
@@ -159,27 +192,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const token = await tokenStorage.getToken();
       if (token) {
-        // In a real app, you'd verify the token by calling an endpoint
-        // For now, we just restore the token
-        dispatch({
-          type: 'SET_USER',
-          payload: {
-            token,
-            user: {
-              id: '',
-              email: '',
-              name: '',
-              phone: null,
-              createdAt: '',
-              updatedAt: '',
-            },
-          },
-        });
+        // Try to fetch the current user profile
+        try {
+          const response = await authService.getCurrentUserProfile();
+          dispatch({
+            type: 'SET_USER',
+            payload: { user: response.user, token },
+          });
+        } catch (error) {
+          // If we can't fetch the profile, clear the token
+          console.error('Failed to restore session:', error);
+          await tokenStorage.removeToken();
+          dispatch({ type: 'SESSION_RESTORED' });
+        }
+      } else {
+        dispatch({ type: 'SESSION_RESTORED' });
       }
     } catch (error) {
       console.error('Failed to restore session:', error);
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'SESSION_RESTORED' });
     }
   }, []);
 
@@ -197,6 +228,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signup,
     logout,
     restoreSession,
+    refreshUser,
     clearError,
   };
 

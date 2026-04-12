@@ -63,8 +63,8 @@ export default function LoginScreen() {
       // Perform login
       await login(formData.email, formData.password);
 
-      // Navigate to main app on successful login
-      router.replace('/(tabs)');
+      // Navigate to profile on successful login
+      router.replace('/(tabs)/profile');
     } catch (err: any) {
       // Show error message - handled by error state and alert
       Alert.alert('Login Failed', err.message || 'Unable to log in. Please check your credentials.');
