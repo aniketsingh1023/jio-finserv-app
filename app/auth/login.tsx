@@ -8,8 +8,11 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/store/authStore';
+import { validateLoginForm } from '@/utils/validation';
 import { Colors } from '@/constants/colors';
 
 interface LoginFormData {
@@ -20,35 +23,52 @@ interface LoginFormData {
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { login, isLoading, error, clearError } = useAuth();
+  
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
     rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const handleInputChange = (field: keyof LoginFormData, value: any) => {
     setFormData({ ...formData, [field]: value });
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[field]) {
+      setValidationErrors({ ...validationErrors, [field]: '' });
+    }
   };
 
   const handleLogin = async () => {
-    if (!formData.email || !formData.password) {
-      alert('Please fill all fields');
-      return;
+    try {
+      clearError();
+
+      // Validate form
+      const errors = validateLoginForm({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (errors.length > 0) {
+        const errorMap: Record<string, string> = {};
+        errors.forEach((err) => {
+          errorMap[err.field] = err.message;
+        });
+        setValidationErrors(errorMap);
+        return;
+      }
+
+      // Perform login
+      await login(formData.email, formData.password);
+
+      // Navigate to main app on successful login
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      // Show error message - handled by error state and alert
+      Alert.alert('Login Failed', err.message || 'Unable to log in. Please check your credentials.');
     }
-
-    setIsLoading(true);
-    // Simulate login
-    setTimeout(() => {
-      setIsLoading(false);
-      alert('Login successful!');
-      router.push('/(tabs)');
-    }, 1500);
-  };
-
-  const handleForgotPassword = () => {
-    alert('Password reset link has been sent to your email');
   };
 
   const handleSignup = () => {
@@ -67,12 +87,18 @@ export default function LoginScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>🏦</Text>
           <Text style={styles.welcomeTitle}>Welcome Back</Text>
           <Text style={styles.welcomeSubtitle}>
             Log in to your Jio Finserv account
           </Text>
         </View>
+
+        {/* Error Alert */}
+        {error && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
         {/* Form */}
         <View style={styles.form}>
@@ -80,7 +106,10 @@ export default function LoginScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email Address</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                validationErrors.email ? styles.inputError : null,
+              ]}
               placeholder="Enter your email"
               placeholderTextColor={Colors.textTertiary}
               keyboardType="email-address"
@@ -89,12 +118,20 @@ export default function LoginScreen() {
               onChangeText={(value) => handleInputChange('email', value)}
               editable={!isLoading}
             />
+            {validationErrors.email && (
+              <Text style={styles.errorMessage}>{validationErrors.email}</Text>
+            )}
           </View>
 
           {/* Password Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
-            <View style={styles.passwordInputWrapper}>
+            <View
+              style={[
+                styles.passwordInputWrapper,
+                validationErrors.password ? styles.inputError : null,
+              ]}
+            >
               <TextInput
                 style={styles.passwordInput}
                 placeholder="Enter your password"
@@ -113,36 +150,9 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
-
-          {/* Remember Me & Forgot Password */}
-          <View style={styles.footerRow}>
-            <TouchableOpacity
-              style={styles.rememberMeContainer}
-              onPress={() =>
-                handleInputChange('rememberMe', !formData.rememberMe)
-              }
-              disabled={isLoading}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  formData.rememberMe && styles.checkboxChecked,
-                ]}
-              >
-                {formData.rememberMe && (
-                  <Text style={styles.checkmark}>✓</Text>
-                )}
-              </View>
-              <Text style={styles.rememberMeText}>Remember me</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleForgotPassword}
-              disabled={isLoading}
-            >
-              <Text style={styles.forgotPassword}>Forgot Password?</Text>
-            </TouchableOpacity>
+            {validationErrors.password && (
+              <Text style={styles.errorMessage}>{validationErrors.password}</Text>
+            )}
           </View>
 
           {/* Login Button */}
@@ -158,34 +168,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* OR Divider */}
-        <View style={styles.orContainer}>
-          <View style={styles.orLine} />
-          <Text style={styles.orText}>OR</Text>
-          <View style={styles.orLine} />
-        </View>
-
-        {/* Social Login */}
-        <View style={styles.socialContainer}>
-          <TouchableOpacity
-            style={styles.socialButton}
-            disabled={isLoading}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.socialIcon}>📱</Text>
-            <Text style={styles.socialButtonText}>Google</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.socialButton}
-            disabled={isLoading}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.socialIcon}>👤</Text>
-            <Text style={styles.socialButtonText}>Apple</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Sign Up Link */}
         <View style={styles.signupPrompt}>
           <Text style={styles.signupText}>Don't have an account? </Text>
@@ -194,13 +176,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Security Note */}
-        <View style={styles.securityNote}>
-          <Text style={styles.securityIcon}>🔒</Text>
-          <Text style={styles.securityText}>
-            Your data is encrypted and secure
-          </Text>
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -218,6 +193,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 24,
     minHeight: '100%',
+    justifyContent: 'center',
   },
   header: {
     alignItems: 'center',
@@ -402,5 +378,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.darkCharcoal,
     fontWeight: '500',
+  },
+  // Error states
+  errorBanner: {
+    backgroundColor: '#FEE',
+    borderLeftWidth: 4,
+    borderLeftColor: '#C33',
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#C33',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  errorMessage: {
+    color: '#C33',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  inputError: {
+    borderColor: '#C33',
   },
 });

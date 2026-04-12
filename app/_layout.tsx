@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/colors';
+import { AuthProvider } from '@/store/authStore';
 
 // Keep splash screen visible while we load critical resources
 SplashScreen.preventAutoHideAsync();
@@ -31,23 +32,24 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack
-          screenOptions={{
-            contentStyle: {
-              backgroundColor: Colors.background,
-            },
-          }}
-        >
-          {/* Tab Navigation - This is the main entry point */}
-          <Stack.Screen
-            name="(tabs)"
-            options={{
-              headerShown: false,
+        <AuthProvider>
+          <Stack
+            screenOptions={{
+              contentStyle: {
+                backgroundColor: Colors.background,
+              },
             }}
-          />
+          >
+            {/* Tab Navigation - This is the main entry point */}
+            <Stack.Screen
+              name="(tabs)"
+              options={{
+                headerShown: false,
+              }}
+            />
 
-          {/* Auth Screens */}
-          <Stack.Screen
+            {/* Auth Screens */}
+            <Stack.Screen
             name="auth/login"
             options={{
               title: 'Login',
@@ -147,6 +149,7 @@ export default function RootLayout() {
           />
         </Stack>
         <StatusBar style="auto" />
+        </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

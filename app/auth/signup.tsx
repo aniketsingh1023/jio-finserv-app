@@ -8,8 +8,11 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/store/authStore';
+import { validateSignupForm } from '@/utils/validation';
 import { Colors } from '@/constants/colors';
 
 interface SignupFormData {
@@ -21,15 +24,10 @@ interface SignupFormData {
   agreeToTerms: boolean;
 }
 
-interface PasswordStrength {
-  hasMinLength: boolean;
-  hasUpperCase: boolean;
-  hasLowerCase: boolean;
-  hasNumber: boolean;
-}
-
 export default function SignupScreen() {
   const router = useRouter();
+  const { signup, isLoading, error, clearError } = useAuth();
+
   const [formData, setFormData] = useState<SignupFormData>({
     fullName: '',
     email: '',
@@ -40,70 +38,63 @@ export default function SignupScreen() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const handleInputChange = (field: keyof SignupFormData, value: any) => {
     setFormData({ ...formData, [field]: value });
-  };
-
-  const getPasswordStrength = (pwd: string): PasswordStrength => {
-    return {
-      hasMinLength: pwd.length >= 8,
-      hasUpperCase: /[A-Z]/.test(pwd),
-      hasLowerCase: /[a-z]/.test(pwd),
-      hasNumber: /[0-9]/.test(pwd),
-    };
-  };
-
-  const isPasswordStrong = (pwd: string): boolean => {
-    const strength = getPasswordStrength(pwd);
-    return Object.values(strength).filter(Boolean).length >= 3;
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[field]) {
+      setValidationErrors({ ...validationErrors, [field]: '' });
+    }
   };
 
   const handleSignup = async () => {
-    if (
-      !formData.fullName ||
-      !formData.email ||
-      !formData.phone ||
-      !formData.password ||
-      !formData.confirmPassword
-    ) {
-      alert('Please fill all fields');
-      return;
-    }
+    try {
+      clearError();
 
-    if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
-      return;
-    }
+      // Check terms agreement
+      if (!formData.agreeToTerms) {
+        Alert.alert('Terms Required', 'Please agree to the terms and conditions');
+        return;
+      }
 
-    if (!isPasswordStrong(formData.password)) {
-      alert(
-        'Password must be at least 8 characters with uppercase, lowercase, and numbers'
+      // Validate form
+      const errors = validateSignupForm({
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      });
+
+      if (errors.length > 0) {
+        const errorMap: Record<string, string> = {};
+        errors.forEach((err) => {
+          errorMap[err.field] = err.message;
+        });
+        setValidationErrors(errorMap);
+        return;
+      }
+
+      // Perform signup
+      await signup(
+        formData.email,
+        formData.password,
+        formData.fullName,
+        formData.phone || undefined
       );
-      return;
-    }
 
-    if (!formData.agreeToTerms) {
-      alert('Please agree to terms and conditions');
-      return;
+      // Navigate to main app on successful signup
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      // Show error message
+      Alert.alert('Signup Failed', err.message || 'Unable to create account');
     }
-
-    setIsLoading(true);
-    // Simulate signup
-    setTimeout(() => {
-      setIsLoading(false);
-      alert('Account created successfully!');
-      router.push('/(tabs)');
-    }, 1500);
   };
 
   const handleLogin = () => {
     router.push('/auth/login');
   };
-
-  const passwordStrength = getPasswordStrength(formData.password);
-  const strengthScore = Object.values(passwordStrength).filter(Boolean).length;
 
   return (
     <KeyboardAvoidingView
@@ -117,12 +108,18 @@ export default function SignupScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>🎉</Text>
-          <Text style={styles.welcomeTitle}>Create Account</Text>
+          <Text style={styles.welcomeTitle}>Create JioFinserv Account</Text>
           <Text style={styles.welcomeSubtitle}>
             Join Jio Finserv and start your journey
           </Text>
         </View>
+
+        {/* Error Alert */}
+        {error && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
         {/* Form */}
         <View style={styles.form}>
@@ -130,20 +127,29 @@ export default function SignupScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Full Name</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                validationErrors.fullName ? styles.inputError : null,
+              ]}
               placeholder="Enter your full name"
               placeholderTextColor={Colors.textTertiary}
               value={formData.fullName}
               onChangeText={(value) => handleInputChange('fullName', value)}
               editable={!isLoading}
             />
+            {validationErrors.fullName && (
+              <Text style={styles.errorMessage}>{validationErrors.fullName}</Text>
+            )}
           </View>
 
           {/* Email Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email Address</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                validationErrors.email ? styles.inputError : null,
+              ]}
               placeholder="Enter your email"
               placeholderTextColor={Colors.textTertiary}
               keyboardType="email-address"
@@ -152,27 +158,41 @@ export default function SignupScreen() {
               onChangeText={(value) => handleInputChange('email', value)}
               editable={!isLoading}
             />
+            {validationErrors.email && (
+              <Text style={styles.errorMessage}>{validationErrors.email}</Text>
+            )}
           </View>
 
           {/* Phone Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone Number</Text>
+            <Text style={styles.label}>Phone Number (Optional)</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                validationErrors.phone ? styles.inputError : null,
+              ]}
               placeholder="Enter your phone number"
               placeholderTextColor={Colors.textTertiary}
               keyboardType="phone-pad"
               value={formData.phone}
               onChangeText={(value) => handleInputChange('phone', value)}
               editable={!isLoading}
-              maxLength={10}
+              maxLength={15}
             />
+            {validationErrors.phone && (
+              <Text style={styles.errorMessage}>{validationErrors.phone}</Text>
+            )}
           </View>
 
           {/* Password Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
-            <View style={styles.passwordInputWrapper}>
+            <View
+              style={[
+                styles.passwordInputWrapper,
+                validationErrors.password ? styles.inputError : null,
+              ]}
+            >
               <TextInput
                 style={styles.passwordInput}
                 placeholder="Create a strong password"
@@ -191,60 +211,20 @@ export default function SignupScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-
-            {/* Password Strength Indicator */}
-            {formData.password && (
-              <View style={styles.strengthContainer}>
-                <View style={styles.strengthBars}>
-                  {[0, 1, 2, 3].map((i) => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.strengthBar,
-                        i < strengthScore && styles.strengthBarFilled,
-                      ]}
-                    />
-                  ))}
-                </View>
-                <Text style={styles.strengthText}>
-                  {strengthScore === 0
-                    ? 'Weak'
-                    : strengthScore <= 2
-                      ? 'Fair'
-                      : strengthScore === 3
-                        ? 'Good'
-                        : 'Strong'}
-                </Text>
-              </View>
-            )}
-
-            {/* Password Requirements */}
-            {formData.password && (
-              <View style={styles.requirementsContainer}>
-                <RequirementItem
-                  check={passwordStrength.hasMinLength}
-                  text="At least 8 characters"
-                />
-                <RequirementItem
-                  check={passwordStrength.hasUpperCase}
-                  text="One uppercase letter"
-                />
-                <RequirementItem
-                  check={passwordStrength.hasLowerCase}
-                  text="One lowercase letter"
-                />
-                <RequirementItem
-                  check={passwordStrength.hasNumber}
-                  text="One number"
-                />
-              </View>
+            {validationErrors.password && (
+              <Text style={styles.errorMessage}>{validationErrors.password}</Text>
             )}
           </View>
 
           {/* Confirm Password Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Confirm Password</Text>
-            <View style={styles.passwordInputWrapper}>
+            <View
+              style={[
+                styles.passwordInputWrapper,
+                validationErrors.confirmPassword ? styles.inputError : null,
+              ]}
+            >
               <TextInput
                 style={styles.passwordInput}
                 placeholder="Confirm your password"
@@ -265,6 +245,11 @@ export default function SignupScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+            {validationErrors.confirmPassword && (
+              <Text style={styles.errorMessage}>
+                {validationErrors.confirmPassword}
+              </Text>
+            )}
           </View>
 
           {/* Terms Checkbox */}
@@ -311,33 +296,10 @@ export default function SignupScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Security Note */}
-        <View style={styles.securityNote}>
-          <Text style={styles.securityIcon}>🔒</Text>
-          <Text style={styles.securityText}>
-            Your information is protected and secure
-          </Text>
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const RequirementItem = ({ check, text }: { check: boolean; text: string }) => (
-  <View style={styles.requirementItem}>
-    <Text style={[styles.requirementIcon, !check && styles.requirementIconFalse]}>
-      {check ? '✓' : '○'}
-    </Text>
-    <Text
-      style={[
-        styles.requirementText,
-        !check && styles.requirementTextFalse,
-      ]}
-    >
-      {text}
-    </Text>
-  </View>
-);
 
 const styles = StyleSheet.create({
   container: {
@@ -355,10 +317,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 28,
   },
-  logo: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
   welcomeTitle: {
     fontSize: 24,
     fontWeight: '700',
@@ -368,6 +326,28 @@ const styles = StyleSheet.create({
   welcomeSubtitle: {
     fontSize: 13,
     color: Colors.textSecondary,
+  },
+  errorBanner: {
+    backgroundColor: '#FEE',
+    borderLeftWidth: 4,
+    borderLeftColor: '#C33',
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#C33',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  errorMessage: {
+    color: '#C33',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  inputError: {
+    borderColor: '#C33',
   },
   form: {
     marginBottom: 24,
@@ -409,59 +389,6 @@ const styles = StyleSheet.create({
   eyeIcon: {
     fontSize: 18,
     padding: 8,
-  },
-  strengthContainer: {
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  strengthBars: {
-    flexDirection: 'row',
-    gap: 4,
-    flex: 1,
-  },
-  strengthBar: {
-    flex: 1,
-    height: 3,
-    backgroundColor: Colors.border,
-    borderRadius: 1.5,
-  },
-  strengthBarFilled: {
-    backgroundColor: Colors.primary,
-  },
-  strengthText: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-  },
-  requirementsContainer: {
-    marginTop: 10,
-    backgroundColor: Colors.surfaceDark,
-    borderRadius: 6,
-    padding: 8,
-  },
-  requirementItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  requirementIcon: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '700',
-    width: 16,
-  },
-  requirementIconFalse: {
-    color: Colors.textTertiary,
-  },
-  requirementText: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-  },
-  requirementTextFalse: {
-    color: Colors.textTertiary,
   },
   termsContainer: {
     flexDirection: 'row',
@@ -525,23 +452,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.primary,
     fontWeight: '700',
-  },
-  securityNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: Colors.accent,
-    borderRadius: 8,
-  },
-  securityIcon: {
-    fontSize: 16,
-  },
-  securityText: {
-    fontSize: 12,
-    color: Colors.darkCharcoal,
-    fontWeight: '500',
   },
 });
