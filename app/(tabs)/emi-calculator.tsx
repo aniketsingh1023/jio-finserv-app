@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// app/emi-calculator.tsx
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -7,385 +8,1080 @@ import {
   TextInput,
   TouchableOpacity,
   Dimensions,
+  Animated,
+  Easing,
 } from 'react-native';
-import { Colors } from '@/constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Svg, { Circle, G } from 'react-native-svg';
+
+const { width, height } = Dimensions.get('window');
+
+// Design System Colors
+const DESIGN_COLORS = {
+  warmMustard: '#D58F16',
+  softOlive: '#CDC58E',
+  goldenYellow: '#F1B643',
+  lightGray: '#BDBBBC',
+  darkNavy: '#252A39',
+};
 
 interface EMIResult {
   monthlyEMI: number;
   totalAmount: number;
   totalInterest: number;
+  principal: number;
 }
 
+// ─── Animated Components ─────────────────────────────────────────────────────
+
+// Circular Progress Component
+const CircularProgress: React.FC<{
+  principal: number;
+  interest: number;
+  animated?: boolean;
+}> = ({ principal, interest, animated = true }) => {
+  const total = principal + interest;
+  const interestPercentage = total > 0 ? (interest / total) * 100 : 0;
+  
+  const animationProgress = useRef(new Animated.Value(0)).current;
+  const size = 200;
+  const strokeWidth = 12;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  useEffect(() => {
+    if (animated) {
+      Animated.timing(animationProgress, {
+        toValue: interestPercentage,
+        duration: 1500,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }).start();
+    } else {
+      animationProgress.setValue(interestPercentage);
+    }
+  }, [interestPercentage]);
+
+  const strokeDashoffset = animationProgress.interpolate({
+    inputRange: [0, 100],
+    outputRange: [circumference, 0],
+  });
+
+  return (
+    <View style={styles.circularProgressContainer}>
+      <Svg width={size} height={size}>
+        <G rotation="-90" origin={`${size / 2}, ${size / 2}`}>
+          {/* Background Circle */}
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#E8E9ED"
+            strokeWidth={strokeWidth}
+            fill="none"
+          />
+          {/* Progress Circle */}
+          <AnimatedCircle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={DESIGN_COLORS.warmMustard}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+          />
+        </G>
+      </Svg>
+      <View style={styles.circularProgressContent}>
+        <Text style={styles.circularProgressLabel}>Principal</Text>
+        <Text style={styles.circularProgressValue}>
+          ₹{principal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+        </Text>
+        <View style={styles.circularProgressLegend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: DESIGN_COLORS.warmMustard }]} />
+            <Text style={styles.legendText}>Interest</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#E8E9ED' }]} />
+            <Text style={styles.legendText}>Principal</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// Create animated circle component
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+// Slider Component
+const CustomSlider: React.FC<{
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+  label: string;
+  unit: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = ({ value, min, max, step, onChange, label, unit, icon }) => {
+  const progress = ((value - min) / (max - min)) * 100;
+  const progressAnim = useRef(new Animated.Value(progress)).current;
+
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: progress,
+      duration: 200,
+      useNativeDriver: false,
+      easing: Easing.out(Easing.cubic),
+    }).start();
+  }, [progress]);
+
+  const widthInterpolation = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
+  return (
+    <View style={styles.sliderContainer}>
+      <View style={styles.sliderHeader}>
+        <View style={styles.sliderLabelContainer}>
+          <Ionicons name={icon} size={20} color={DESIGN_COLORS.warmMustard} />
+          <Text style={styles.sliderLabel}>{label}</Text>
+        </View>
+        <Text style={styles.sliderValue}>
+          {unit === '₹' ? '₹' : ''}{value.toLocaleString('en-IN')}{unit !== '₹' ? unit : ''}
+        </Text>
+      </View>
+      
+      <View style={styles.sliderTrack}>
+        <Animated.View 
+          style={[
+            styles.sliderFill, 
+            { width: widthInterpolation }
+          ]} 
+        />
+        <View style={styles.sliderThumb} />
+      </View>
+
+      <View style={styles.sliderRange}>
+        <Text style={styles.rangeText}>
+          {unit === '₹' ? '₹' : ''}{min.toLocaleString('en-IN')}{unit !== '₹' ? unit : ''}
+        </Text>
+        <Text style={styles.rangeText}>
+          {unit === '₹' ? '₹' : ''}{max.toLocaleString('en-IN')}{unit !== '₹' ? unit : ''}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+// Result Card Component
+const ResultCard: React.FC<{
+  result: EMIResult;
+}> = ({ result }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+    ]).start();
+  }, [result]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.resultContainer,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
+      <View style={styles.resultHeader}>
+        <Text style={styles.resultTitle}>EMI Breakdown</Text>
+        <View style={styles.resultBadge}>
+          <Ionicons name="calculator-outline" size={14} color={DESIGN_COLORS.warmMustard} />
+        </View>
+      </View>
+
+      <View style={styles.emiHighlight}>
+        <Text style={styles.emiLabel}>Monthly EMI</Text>
+        <Text style={styles.emiValue}>
+          ₹{result.monthlyEMI.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+        </Text>
+      </View>
+
+      <View style={styles.resultDetails}>
+        <View style={styles.resultItem}>
+          <View style={styles.resultItemIcon}>
+            <Ionicons name="cash-outline" size={20} color={DESIGN_COLORS.warmMustard} />
+          </View>
+          <View style={styles.resultItemContent}>
+            <Text style={styles.resultItemLabel}>Total Payment</Text>
+            <Text style={styles.resultItemValue}>
+              ₹{result.totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.resultDivider} />
+
+        <View style={styles.resultItem}>
+          <View style={styles.resultItemIcon}>
+            <Ionicons name="trending-up-outline" size={20} color={DESIGN_COLORS.goldenYellow} />
+          </View>
+          <View style={styles.resultItemContent}>
+            <Text style={styles.resultItemLabel}>Total Interest</Text>
+            <Text style={[styles.resultItemValue, { color: DESIGN_COLORS.goldenYellow }]}>
+              ₹{result.totalInterest.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
+};
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
 export default function EMICalculatorScreen() {
-  const [loanAmount, setLoanAmount] = useState('100000');
-  const [interestRate, setInterestRate] = useState('12');
-  const [tenure, setTenure] = useState('24');
+  const [loanAmount, setLoanAmount] = useState(500000);
+  const [interestRate, setInterestRate] = useState(10.5);
+  const [tenure, setTenure] = useState(36);
   const [emiResult, setEMIResult] = useState<EMIResult | null>(null);
+  
+  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+  const contentFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(headerFadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(contentFadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+    ]).start();
+
+    // Calculate initial EMI
+    calculateEMI();
+  }, []);
 
   const calculateEMI = () => {
-    const principal = parseFloat(loanAmount) || 0;
-    const rate = parseFloat(interestRate) || 0;
-    const months = parseFloat(tenure) || 0;
-
-    if (principal <= 0 || rate < 0 || months <= 0) {
-      alert('Please enter valid values');
+    if (loanAmount <= 0 || interestRate < 0 || tenure <= 0) {
       return;
     }
 
-    const monthlyRate = rate / 12 / 100;
-    const emi =
-      (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) /
-      (Math.pow(1 + monthlyRate, months) - 1);
-    const totalAmount = emi * months;
-    const totalInterest = totalAmount - principal;
+    const monthlyRate = interestRate / 12 / 100;
+    const emi = monthlyRate === 0 
+      ? loanAmount / tenure
+      : (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, tenure)) /
+        (Math.pow(1 + monthlyRate, tenure) - 1);
+    const totalAmount = emi * tenure;
+    const totalInterest = totalAmount - loanAmount;
 
     setEMIResult({
       monthlyEMI: emi,
       totalAmount: totalAmount,
       totalInterest: totalInterest,
+      principal: loanAmount,
     });
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleReset = () => {
-    setLoanAmount('100000');
-    setInterestRate('12');
-    setTenure('24');
-    setEMIResult(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setLoanAmount(500000);
+    setInterestRate(10.5);
+    setTenure(36);
+    
+    setTimeout(() => {
+      calculateEMI();
+    }, 100);
   };
 
+  const quickAmounts = [100000, 500000, 1000000, 2500000];
+  const quickRates = [8.5, 10.5, 12.5, 15];
+  const quickTenures = [12, 24, 36, 60];
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>EMI Calculator</Text>
-        <Text style={styles.headerSubtitle}>
-          Calculate your monthly EMI in seconds
-        </Text>
-      </View>
-
-      {/* Input Section */}
-      <View style={styles.inputSection}>
-        {/* Loan Amount */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Loan Amount (₹)</Text>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.prefix}>₹</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter loan amount"
-              placeholderTextColor={Colors.textTertiary}
-              value={loanAmount}
-              onChangeText={setLoanAmount}
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <View style={styles.quickButtonsContainer}>
-            {['50000', '100000', '500000', '1000000'].map((amount) => (
-              <TouchableOpacity
-                key={amount}
-                style={styles.quickButton}
-                onPress={() => setLoanAmount(amount)}
-              >
-                <Text style={styles.quickButtonText}>₹{(parseInt(amount) / 100000).toFixed(0)}L</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Interest Rate */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Interest Rate (% p.a.)</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter interest rate"
-              placeholderTextColor={Colors.textTertiary}
-              value={interestRate}
-              onChangeText={setInterestRate}
-              keyboardType="decimal-pad"
-            />
-            <Text style={styles.suffix}>%</Text>
-          </View>
-          <View style={styles.quickButtonsContainer}>
-            {['8', '10', '12', '15'].map((rate) => (
-              <TouchableOpacity
-                key={rate}
-                style={styles.quickButton}
-                onPress={() => setInterestRate(rate)}
-              >
-                <Text style={styles.quickButtonText}>{rate}%</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Loan Tenure */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Loan Tenure (Months)</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter tenure in months"
-              placeholderTextColor={Colors.textTertiary}
-              value={tenure}
-              onChangeText={setTenure}
-              keyboardType="decimal-pad"
-            />
-            <Text style={styles.suffix}>mo</Text>
-          </View>
-          <View style={styles.quickButtonsContainer}>
-            {['12', '24', '36', '60'].map((t) => (
-              <TouchableOpacity
-                key={t}
-                style={styles.quickButton}
-                onPress={() => setTenure(t)}
-              >
-                <Text style={styles.quickButtonText}>{t}mo</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </View>
-
-      {/* Button Group */}
-      <View style={styles.buttonGroup}>
-        <TouchableOpacity
-          style={styles.calculateButton}
-          onPress={calculateEMI}
-          activeOpacity={0.7}
+    <ScrollView 
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      {/* Animated Header */}
+      <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
+        <LinearGradient
+          colors={[DESIGN_COLORS.darkNavy, '#1A1E2E']}
+          style={styles.headerGradient}
         >
-          <Text style={styles.calculateButtonText}>Calculate EMI</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.resetButton}
-          onPress={handleReset}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.resetButtonText}>Reset</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Results Section */}
-      {emiResult && (
-        <View style={styles.resultSection}>
-          <Text style={styles.resultTitle}>Your EMI Details</Text>
-
-          <View style={styles.resultCard}>
-            <View style={styles.resultRow}>
-              <Text style={styles.resultLabel}>Monthly EMI</Text>
-              <Text style={styles.resultValue}>
-                ₹{emiResult.monthlyEMI.toLocaleString('en-IN', {
-                  maximumFractionDigits: 0,
-                })}
-              </Text>
+          <View style={styles.headerContent}>
+            <View style={styles.headerIcon}>
+              <Ionicons name="calculator" size={32} color={DESIGN_COLORS.goldenYellow} />
             </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.resultRow}>
-              <Text style={styles.resultLabel}>Total Amount Payable</Text>
-              <Text style={styles.resultValue}>
-                ₹{emiResult.totalAmount.toLocaleString('en-IN', {
-                  maximumFractionDigits: 0,
-                })}
-              </Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.resultRow}>
-              <Text style={styles.resultLabel}>Total Interest Amount</Text>
-              <Text style={styles.resultValue}>
-                ₹{emiResult.totalInterest.toLocaleString('en-IN', {
-                  maximumFractionDigits: 0,
-                })}
-              </Text>
-            </View>
-          </View>
-
-          {/* Breakdown Info */}
-          <View style={styles.infoBox}>
-            <Text style={styles.infoTitle}>
-              💡 You'll pay ₹
-              {emiResult.totalInterest.toLocaleString('en-IN', {
-                maximumFractionDigits: 0,
-              })}{' '}
-              as interest
+            <Text style={styles.headerTitle}>EMI Calculator</Text>
+            <Text style={styles.headerSubtitle}>
+              Plan your loan with confidence
             </Text>
           </View>
+        </LinearGradient>
+      </Animated.View>
+
+      <Animated.View style={[styles.content, { opacity: contentFadeAnim }]}>
+        {/* Quick Stats Card */}
+        {emiResult && (
+          <View style={styles.quickStatsCard}>
+            <View style={styles.quickStat}>
+              <Text style={styles.quickStatLabel}>Monthly EMI</Text>
+              <Text style={styles.quickStatValue}>
+                ₹{emiResult.monthlyEMI.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+              </Text>
+            </View>
+            <View style={styles.quickStatDivider} />
+            <View style={styles.quickStat}>
+              <Text style={styles.quickStatLabel}>Total Interest</Text>
+              <Text style={styles.quickStatValue}>
+                ₹{emiResult.totalInterest.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Loan Amount Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Loan Details</Text>
+          
+          <View style={styles.inputCard}>
+            <View style={styles.inputHeader}>
+              <Text style={styles.inputLabel}>Loan Amount</Text>
+              <Text style={styles.inputValue}>
+                ₹{loanAmount.toLocaleString('en-IN')}
+              </Text>
+            </View>
+            
+            <View style={styles.quickChipsContainer}>
+              {quickAmounts.map((amount) => (
+                <TouchableOpacity
+                  key={amount}
+                  style={[
+                    styles.quickChip,
+                    loanAmount === amount && styles.quickChipActive,
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setLoanAmount(amount);
+                    setTimeout(calculateEMI, 50);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.quickChipText,
+                      loanAmount === amount && styles.quickChipTextActive,
+                    ]}
+                  >
+                    ₹{(amount / 100000).toFixed(1)}L
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.sliderWrapper}>
+              <TouchableOpacity
+                style={styles.sliderButton}
+                onPress={() => {
+                  const newValue = Math.max(10000, loanAmount - 10000);
+                  setLoanAmount(newValue);
+                  setTimeout(calculateEMI, 50);
+                }}
+              >
+                <Ionicons name="remove" size={20} color={DESIGN_COLORS.darkNavy} />
+              </TouchableOpacity>
+              
+              <View style={styles.sliderTrackContainer}>
+                <Animated.View 
+                  style={[
+                    styles.sliderFillBar, 
+                    { width: `${Math.min(100, (loanAmount / 5000000) * 100)}%` }
+                  ]} 
+                />
+              </View>
+              
+              <TouchableOpacity
+                style={styles.sliderButton}
+                onPress={() => {
+                  const newValue = Math.min(5000000, loanAmount + 10000);
+                  setLoanAmount(newValue);
+                  setTimeout(calculateEMI, 50);
+                }}
+              >
+                <Ionicons name="add" size={20} color={DESIGN_COLORS.darkNavy} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      )}
+
+        {/* Interest Rate Section */}
+        <View style={styles.inputCard}>
+          <View style={styles.inputHeader}>
+            <Text style={styles.inputLabel}>Interest Rate</Text>
+            <Text style={styles.inputValue}>{interestRate}% p.a.</Text>
+          </View>
+          
+          <View style={styles.quickChipsContainer}>
+            {quickRates.map((rate) => (
+              <TouchableOpacity
+                key={rate}
+                style={[
+                  styles.quickChip,
+                  interestRate === rate && styles.quickChipActive,
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setInterestRate(rate);
+                  setTimeout(calculateEMI, 50);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.quickChipText,
+                    interestRate === rate && styles.quickChipTextActive,
+                  ]}
+                >
+                  {rate}%
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.sliderWrapper}>
+            <TouchableOpacity
+              style={styles.sliderButton}
+              onPress={() => {
+                const newValue = Math.max(5, interestRate - 0.5);
+                setInterestRate(Number(newValue.toFixed(1)));
+                setTimeout(calculateEMI, 50);
+              }}
+            >
+              <Ionicons name="remove" size={20} color={DESIGN_COLORS.darkNavy} />
+            </TouchableOpacity>
+            
+            <View style={styles.sliderTrackContainer}>
+              <Animated.View 
+                style={[
+                  styles.sliderFillBar, 
+                  { width: `${((interestRate - 5) / 20) * 100}%` }
+                ]} 
+              />
+            </View>
+            
+            <TouchableOpacity
+              style={styles.sliderButton}
+              onPress={() => {
+                const newValue = Math.min(25, interestRate + 0.5);
+                setInterestRate(Number(newValue.toFixed(1)));
+                setTimeout(calculateEMI, 50);
+              }}
+            >
+              <Ionicons name="add" size={20} color={DESIGN_COLORS.darkNavy} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Tenure Section */}
+        <View style={styles.inputCard}>
+          <View style={styles.inputHeader}>
+            <Text style={styles.inputLabel}>Loan Tenure</Text>
+            <Text style={styles.inputValue}>{tenure} Months</Text>
+          </View>
+          
+          <View style={styles.quickChipsContainer}>
+            {quickTenures.map((t) => (
+              <TouchableOpacity
+                key={t}
+                style={[
+                  styles.quickChip,
+                  tenure === t && styles.quickChipActive,
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setTenure(t);
+                  setTimeout(calculateEMI, 50);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.quickChipText,
+                    tenure === t && styles.quickChipTextActive,
+                  ]}
+                >
+                  {t} mo
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.sliderWrapper}>
+            <TouchableOpacity
+              style={styles.sliderButton}
+              onPress={() => {
+                const newValue = Math.max(6, tenure - 6);
+                setTenure(newValue);
+                setTimeout(calculateEMI, 50);
+              }}
+            >
+              <Ionicons name="remove" size={20} color={DESIGN_COLORS.darkNavy} />
+            </TouchableOpacity>
+            
+            <View style={styles.sliderTrackContainer}>
+              <Animated.View 
+                style={[
+                  styles.sliderFillBar, 
+                  { width: `${((tenure - 6) / 54) * 100}%` }
+                ]} 
+              />
+            </View>
+            
+            <TouchableOpacity
+              style={styles.sliderButton}
+              onPress={() => {
+                const newValue = Math.min(60, tenure + 6);
+                setTenure(newValue);
+                setTimeout(calculateEMI, 50);
+              }}
+            >
+              <Ionicons name="add" size={20} color={DESIGN_COLORS.darkNavy} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.calculateButton}
+            onPress={calculateEMI}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={[DESIGN_COLORS.warmMustard, DESIGN_COLORS.goldenYellow]}
+              style={styles.calculateGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="calculator-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.calculateButtonText}>Calculate EMI</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={handleReset}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="refresh-outline" size={20} color={DESIGN_COLORS.lightGray} />
+            <Text style={styles.resetButtonText}>Reset</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Results Section */}
+        {emiResult && <ResultCard result={emiResult} />}
+
+        {/* Circular Progress Visualization */}
+        {emiResult && (
+          <View style={styles.visualizationSection}>
+            <Text style={styles.visualizationTitle}>Payment Breakdown</Text>
+            <CircularProgress 
+              principal={emiResult.principal} 
+              interest={emiResult.totalInterest}
+              animated={true}
+            />
+          </View>
+        )}
+
+        {/* Info Note */}
+        <View style={styles.infoNote}>
+          <Ionicons name="information-circle-outline" size={20} color={DESIGN_COLORS.lightGray} />
+          <Text style={styles.infoNoteText}>
+            This is an indicative EMI. Actual rates may vary based on your credit profile.
+          </Text>
+        </View>
+      </Animated.View>
 
       <View style={styles.bottomSpacing} />
     </ScrollView>
   );
 }
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F8F9FC',
   },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+
+  // Header
   header: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
+    width: width,
+  },
+  headerGradient: {
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 40,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerContent: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  headerIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.white,
-    marginBottom: 4,
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: Colors.white,
-    opacity: 0.9,
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  inputSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+
+  // Content
+  content: {
+    paddingHorizontal: 20,
+    marginTop: -20,
   },
-  inputGroup: {
-    marginBottom: 20,
+
+  // Quick Stats Card
+  quickStatsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'row',
+    marginBottom: 24,
+    shadowColor: DESIGN_COLORS.darkNavy,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textPrimary,
+  quickStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  quickStatDivider: {
+    width: 1,
+    backgroundColor: '#E8E9ED',
+    marginHorizontal: 12,
+  },
+  quickStatLabel: {
+    fontSize: 13,
+    color: DESIGN_COLORS.lightGray,
     marginBottom: 8,
   },
-  inputWrapper: {
+  quickStatValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: DESIGN_COLORS.darkNavy,
+  },
+
+  // Section
+  section: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: DESIGN_COLORS.darkNavy,
+    marginBottom: 12,
+  },
+
+  // Input Card
+  inputCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: DESIGN_COLORS.darkNavy,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  inputHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 12,
-    height: 48,
+    marginBottom: 16,
   },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.textPrimary,
-  },
-  prefix: {
-    fontSize: 14,
+  inputLabel: {
+    fontSize: 15,
     fontWeight: '600',
-    color: Colors.textSecondary,
-    marginRight: 8,
+    color: DESIGN_COLORS.darkNavy,
   },
-  suffix: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginLeft: 8,
+  inputValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: DESIGN_COLORS.warmMustard,
   },
-  quickButtonsContainer: {
+
+  // Quick Chips
+  quickChipsContainer: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 10,
+    marginBottom: 16,
   },
-  quickButton: {
+  quickChip: {
     flex: 1,
-    backgroundColor: Colors.surfaceDark,
-    paddingVertical: 8,
-    borderRadius: 6,
+    backgroundColor: '#F8F9FC',
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E8E9ED',
+  },
+  quickChipActive: {
+    backgroundColor: `${DESIGN_COLORS.warmMustard}15`,
+    borderColor: DESIGN_COLORS.warmMustard,
+  },
+  quickChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: DESIGN_COLORS.lightGray,
+  },
+  quickChipTextActive: {
+    color: DESIGN_COLORS.warmMustard,
+  },
+
+  // Slider
+  sliderWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sliderButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8F9FC',
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E8E9ED',
   },
-  quickButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textSecondary,
+  sliderTrackContainer: {
+    flex: 1,
+    height: 4,
+    backgroundColor: '#E8E9ED',
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  buttonGroup: {
+  sliderFillBar: {
+    height: '100%',
+    backgroundColor: DESIGN_COLORS.warmMustard,
+    borderRadius: 2,
+  },
+
+  // Action Buttons
+  actionButtons: {
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    marginTop: 8,
+    marginBottom: 24,
   },
   calculateButton: {
     flex: 2,
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: DESIGN_COLORS.warmMustard,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  calculateGradient: {
+    flexDirection: 'row',
+    paddingVertical: 16,
     justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
   },
   calculateButtonText: {
-    color: Colors.white,
+    fontSize: 16,
     fontWeight: '700',
-    fontSize: 14,
+    color: '#FFFFFF',
   },
   resetButton: {
     flex: 1,
-    backgroundColor: Colors.surfaceDark,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    borderRadius: 14,
     justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E8E9ED',
   },
   resetButtonText: {
-    color: Colors.textSecondary,
-    fontWeight: '600',
     fontSize: 14,
+    fontWeight: '600',
+    color: DESIGN_COLORS.lightGray,
   },
-  resultSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+
+  // Result Container
+  resultContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: DESIGN_COLORS.darkNavy,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   resultTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 12,
+    color: DESIGN_COLORS.darkNavy,
   },
-  resultCard: {
-    backgroundColor: Colors.white,
+  resultBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: `${DESIGN_COLORS.warmMustard}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emiHighlight: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  emiLabel: {
+    fontSize: 14,
+    color: DESIGN_COLORS.lightGray,
+    marginBottom: 8,
+  },
+  emiValue: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: DESIGN_COLORS.darkNavy,
+    letterSpacing: -0.5,
+  },
+  resultDetails: {
+    gap: 12,
+  },
+  resultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  resultItemIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 16,
+    backgroundColor: '#F8F9FC',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  resultRow: {
+  resultItemContent: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
   },
-  resultLabel: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '500',
+  resultItemLabel: {
+    fontSize: 14,
+    color: DESIGN_COLORS.lightGray,
   },
-  resultValue: {
+  resultItemValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: DESIGN_COLORS.darkNavy,
+  },
+  resultDivider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+  },
+
+  // Circular Progress
+  visualizationSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  visualizationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: DESIGN_COLORS.darkNavy,
+    marginBottom: 16,
+  },
+  circularProgressContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circularProgressContent: {
+    position: 'absolute',
+    alignItems: 'center',
+  },
+  circularProgressLabel: {
+    fontSize: 12,
+    color: DESIGN_COLORS.lightGray,
+    marginBottom: 4,
+  },
+  circularProgressValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: DESIGN_COLORS.darkNavy,
+    marginBottom: 12,
+  },
+  circularProgressLegend: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontSize: 12,
+    color: DESIGN_COLORS.lightGray,
+  },
+
+  // Info Note
+  infoNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F8F9FC',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  infoNoteText: {
+    flex: 1,
+    fontSize: 12,
+    color: DESIGN_COLORS.lightGray,
+    lineHeight: 18,
+  },
+
+  bottomSpacing: {
+    height: 20,
+  },
+
+  // Slider Component Styles
+  sliderContainer: {
+    marginBottom: 8,
+  },
+  sliderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sliderLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sliderLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: DESIGN_COLORS.darkNavy,
+  },
+  sliderValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.primary,
+    color: DESIGN_COLORS.warmMustard,
   },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.divider,
+  sliderTrack: {
+    height: 6,
+    backgroundColor: '#E8E9ED',
+    borderRadius: 3,
+    position: 'relative',
+    marginBottom: 8,
   },
-  infoBox: {
-    backgroundColor: Colors.accent,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+  sliderFill: {
+    height: '100%',
+    backgroundColor: DESIGN_COLORS.warmMustard,
+    borderRadius: 3,
+    position: 'absolute',
   },
-  infoTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.darkCharcoal,
+  sliderThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: DESIGN_COLORS.warmMustard,
+    position: 'absolute',
+    top: -7,
+    right: -10,
+    shadowColor: DESIGN_COLORS.darkNavy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  bottomSpacing: {
-    height: 80,
+  sliderRange: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  rangeText: {
+    fontSize: 12,
+    color: DESIGN_COLORS.lightGray,
   },
 });
+
+// Add Platform import
+import { Platform } from 'react-native';

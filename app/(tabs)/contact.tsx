@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// app/contact.tsx
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -7,9 +8,35 @@ import {
   TextInput,
   TouchableOpacity,
   Linking,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  Animated,
+  Dimensions,
+  Modal,
+  ImageBackground,
+  Easing,
+  ColorValue,
 } from 'react-native';
-import { Colors } from '@/constants/colors';
-import { Icon } from '@/components/Icon';
+
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width, height } = Dimensions.get('window');
+
+// ─── COLORS ──────────────────────────────────────────────────────────────────
+
+const DESIGN_COLORS = {
+  warmMustard: '#D58F16',
+  softOlive: '#CDC58E',
+  goldenYellow: '#F1B643',
+  lightGray: '#BDBBBC',
+  darkNavy: '#252A39',
+};
+
+// ─── TYPES ───────────────────────────────────────────────────────────────────
 
 interface FormData {
   name: string;
@@ -18,6 +45,159 @@ interface FormData {
   subject: string;
   message: string;
 }
+
+interface QuickAction {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  gradient: readonly [ColorValue, ColorValue, ...ColorValue[]];
+  action: () => void;
+}
+
+// ─── ANIMATED INPUT ──────────────────────────────────────────────────────────
+
+const AnimatedInput: React.FC<{
+  icon: keyof typeof Ionicons.glyphMap;
+  placeholder: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  isMultiline?: boolean;
+  keyboardType?: any;
+}> = ({
+  icon,
+  placeholder,
+  value,
+  onChangeText,
+  isMultiline,
+  keyboardType,
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+
+  const labelAnim = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const borderAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(labelAnim, {
+      toValue: value || isFocused ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [value, isFocused]);
+
+  useEffect(() => {
+    Animated.timing(borderAnim, {
+      toValue: isFocused ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [isFocused]);
+
+  const borderColor = borderAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#E8E9ED', DESIGN_COLORS.warmMustard],
+  });
+
+  const labelStyle = {
+    top: labelAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [isMultiline ? 20 : 16, -8],
+    }),
+    fontSize: labelAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [15, 12],
+    }),
+    color: labelAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [DESIGN_COLORS.lightGray, DESIGN_COLORS.warmMustard],
+    }),
+  };
+
+  return (
+    // ✅ FIXED: Animated.View instead of View
+    <Animated.View
+      style={[
+        styles.floatingInputContainer,
+        { borderColor } as any,
+      ]}
+    >
+      <Animated.Text style={[styles.floatingLabel, labelStyle as any]}>
+        {placeholder}
+      </Animated.Text>
+
+      <View style={styles.inputRow}>
+        <Ionicons
+          name={icon}
+          size={20}
+          color={
+            isFocused
+              ? DESIGN_COLORS.warmMustard
+              : DESIGN_COLORS.lightGray
+          }
+        />
+
+        <TextInput
+          style={[
+            styles.floatingInput,
+            isMultiline && styles.textAreaInput,
+          ]}
+          value={value}
+          onChangeText={onChangeText}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          keyboardType={keyboardType}
+          multiline={isMultiline}
+          numberOfLines={isMultiline ? 4 : 1}
+          textAlignVertical={isMultiline ? 'top' : 'center'}
+        />
+      </View>
+    </Animated.View>
+  );
+};
+
+// ─── QUICK ACTION CARD ───────────────────────────────────────────────────────
+
+const QuickActionCard: React.FC<{
+  item: QuickAction;
+  index: number;
+}> = ({ item, index }) => {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.delay(index * 100),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        style={styles.quickActionCard}
+        onPress={item.action}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={item.gradient}
+          style={styles.quickActionGradient}
+        >
+          <Ionicons name={item.icon} size={28} color="#fff" />
+          <Text style={styles.quickActionTitle}>{item.title}</Text>
+          <Text style={styles.quickActionSubtitle}>
+            {item.subtitle}
+          </Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+// ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 
 export default function ContactScreen() {
   const [formData, setFormData] = useState<FormData>({
@@ -28,372 +208,223 @@ export default function ContactScreen() {
     message: '',
   });
 
-  const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData({ ...formData, [field]: value });
+  const handleInputChange = (
+    field: keyof FormData,
+    value: string
+  ) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    if (!formData.name || !formData.email || !formData.phone || !formData.message) {
-      alert('Please fill all required fields');
-      return;
-    }
-    alert('Thank you for reaching out! We will contact you soon.');
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      subject: '',
-      message: '',
-    });
-  };
-
-  const handleCall = () => {
-    Linking.openURL('tel:+91-1800-123-4567');
-  };
-
-  const handleEmail = () => {
-    Linking.openURL('mailto:support@jiofinserv.com');
-  };
+  const quickActions: QuickAction[] = [
+    {
+      id: '1',
+      title: 'Call Us',
+      subtitle: 'Instant Support',
+      icon: 'call-outline',
+      gradient: [
+        DESIGN_COLORS.warmMustard,
+        DESIGN_COLORS.goldenYellow,
+      ],
+      action: () =>
+        Linking.openURL('tel:+9118001234567'),
+    },
+    {
+      id: '2',
+      title: 'WhatsApp',
+      subtitle: 'Chat with us',
+      icon: 'logo-whatsapp',
+      gradient: ['#25D366', '#128C7E'],
+      action: () =>
+        Linking.openURL(
+          'https://wa.me/9118001234567?text=Hello'
+        ),
+    },
+    {
+      id: '3',
+      title: 'Email',
+      subtitle: 'Write to us',
+      icon: 'mail-outline',
+      gradient: [
+        DESIGN_COLORS.darkNavy,
+        '#3A4050',
+      ],
+      action: () =>
+        Linking.openURL(
+          'mailto:support@jiofinserv.com'
+        ),
+    },
+  ];
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Contact Us</Text>
-        <Text style={styles.headerSubtitle}>We'd love to hear from you</Text>
-      </View>
-
-      {/* Quick Contact Options */}
-      <View style={styles.quickContactContainer}>
-        <TouchableOpacity
-          style={styles.quickContactCard}
-          onPress={handleCall}
-          activeOpacity={0.7}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={
+        Platform.OS === 'ios' ? 'padding' : 'height'
+      }
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* HERO */}
+        <ImageBackground
+          source={{
+            uri: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab',
+          }}
+          style={styles.heroContainer}
         >
-          <Icon name="phone-call" size={28} color={Colors.primary} />
-          <Text style={styles.quickContactLabel}>Call Us</Text>
-          <Text style={styles.quickContactValue}>1800-123-4567</Text>
-        </TouchableOpacity>
+          <LinearGradient
+            colors={[
+              'rgba(0,0,0,0.7)',
+              'rgba(0,0,0,0.9)',
+            ]}
+            style={styles.heroOverlay}
+          >
+            <Text style={styles.heroTitle}>
+              Get in Touch
+            </Text>
+            <Text style={styles.heroSubtitle}>
+              We’re here to help you anytime
+            </Text>
+          </LinearGradient>
+        </ImageBackground>
 
-        <TouchableOpacity
-          style={styles.quickContactCard}
-          onPress={handleEmail}
-          activeOpacity={0.7}
-        >
-          <Icon name="mail" size={28} color={Colors.primary} />
-          <Text style={styles.quickContactLabel}>Email Us</Text>
-          <Text style={styles.quickContactValue}>support@jiofinserv.com</Text>
-        </TouchableOpacity>
-      </View>
+        {/* QUICK ACTIONS */}
+        <View style={styles.quickActionsWrapper}>
+          {quickActions.map((item, index) => (
+            <QuickActionCard
+              key={item.id}
+              item={item}
+              index={index}
+            />
+          ))}
+        </View>
 
-      {/* Contact Form */}
-      <View style={styles.formContainer}>
-        <Text style={styles.formTitle}>Send us a Message</Text>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Full Name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your name"
-            placeholderTextColor={Colors.textTertiary}
+        {/* FORM */}
+        <View style={styles.formWrapper}>
+          <AnimatedInput
+            icon="person-outline"
+            placeholder="Full Name"
             value={formData.name}
-            onChangeText={(value) => handleInputChange('name', value)}
+            onChangeText={v =>
+              handleInputChange('name', v)
+            }
           />
-        </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email Address *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your email"
-            placeholderTextColor={Colors.textTertiary}
-            keyboardType="email-address"
+          <AnimatedInput
+            icon="mail-outline"
+            placeholder="Email"
             value={formData.email}
-            onChangeText={(value) => handleInputChange('email', value)}
+            onChangeText={v =>
+              handleInputChange('email', v)
+            }
           />
-        </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Phone Number *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your phone number"
-            placeholderTextColor={Colors.textTertiary}
-            keyboardType="phone-pad"
+          <AnimatedInput
+            icon="call-outline"
+            placeholder="Phone"
             value={formData.phone}
-            onChangeText={(value) => handleInputChange('phone', value)}
+            onChangeText={v =>
+              handleInputChange('phone', v)
+            }
           />
-        </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Subject</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="What is this about?"
-            placeholderTextColor={Colors.textTertiary}
-            value={formData.subject}
-            onChangeText={(value) => handleInputChange('subject', value)}
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Message *</Text>
-          <TextInput
-            style={[styles.input, styles.messageInput]}
-            placeholder="Tell us how we can help..."
-            placeholderTextColor={Colors.textTertiary}
+          <AnimatedInput
+            icon="document-text-outline"
+            placeholder="Message"
             value={formData.message}
-            onChangeText={(value) => handleInputChange('message', value)}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
+            onChangeText={v =>
+              handleInputChange('message', v)
+            }
+            isMultiline
           />
         </View>
-
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={handleSubmit}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.submitButtonText}>Send Message</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Office Information */}
-      <View style={styles.officeSection}>
-        <Text style={styles.officeTitle}>Our Offices</Text>
-
-        <View style={styles.officeCard}>
-          <Icon name="map-pin" size={20} color={Colors.primary} />
-          <View style={styles.officeContent}>
-            <Text style={styles.officeName}>Head Office - Mumbai</Text>
-            <Text style={styles.officeAddress}>
-              123 Financial Plaza, Mumbai, Maharashtra 400001
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.officeCard}>
-          <Icon name="map-pin" size={20} color={Colors.primary} />
-          <View style={styles.officeContent}>
-            <Text style={styles.officeName}>Regional Office - Bangalore</Text>
-            <Text style={styles.officeAddress}>
-              456 Tech Park, Bangalore, Karnataka 560001
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.officeCard}>
-          <Icon name="map-pin" size={20} color={Colors.primary} />
-          <View style={styles.officeContent}>
-            <Text style={styles.officeName}>Regional Office - Delhi</Text>
-            <Text style={styles.officeAddress}>
-              789 Business Hub, New Delhi, Delhi 110001
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Business Hours */}
-      <View style={styles.hoursSection}>
-        <Text style={styles.hoursTitle}>Business Hours</Text>
-        <View style={styles.hoursBox}>
-          <View style={styles.hoursItem}>
-            <Icon name="calendar" size={16} color={Colors.primary} />
-            <Text style={styles.hoursText}>Monday - Friday: 9:00 AM - 6:00 PM</Text>
-          </View>
-          <View style={styles.hoursItem}>
-            <Icon name="calendar" size={16} color={Colors.primary} />
-            <Text style={styles.hoursText}>Saturday: 10:00 AM - 4:00 PM</Text>
-          </View>
-          <View style={styles.hoursItem}>
-            <Icon name="calendar" size={16} color={Colors.primary} />
-            <Text style={styles.hoursText}>Sunday: Closed</Text>
-          </View>
-          <Text style={[styles.hoursText, styles.hoursHighlight]}>
-            24/7 Support Available via Chat
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.bottomSpacing} />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
+// ─── STYLES ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: '#F8F9FC' },
+  scrollContent: { paddingBottom: 40 },
+
+  heroContainer: {
+    height: height * 0.35,
+    width: '100%',
+  },
+  heroOverlay: {
     flex: 1,
-    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#fff',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.white,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
+  heroSubtitle: {
     fontSize: 14,
-    color: Colors.white,
-    opacity: 0.9,
+    color: '#ddd',
+    marginTop: 8,
   },
-  quickContactContainer: {
+
+  quickActionsWrapper: {
     flexDirection: 'row',
+    padding: 16,
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
   },
-  quickContactCard: {
+
+  quickActionCard: {
     flex: 1,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  quickActionGradient: {
     padding: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
-  quickContactLabel: {
+  quickActionTitle: {
+    color: '#fff',
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  quickActionSubtitle: {
+    color: '#eee',
     fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginBottom: 4,
-    marginTop: 8,
   },
-  quickContactValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.primary,
-    textAlign: 'center',
+
+  formWrapper: {
+    padding: 16,
   },
-  formContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-  },
-  formTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.darkCharcoal,
-    marginBottom: 16,
-    letterSpacing: 0.3,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: Colors.white,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: Colors.textPrimary,
-  },
-  messageInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  submitButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  submitButtonText: {
-    color: Colors.white,
-    fontWeight: '700',
-    fontSize: 16,
-    letterSpacing: 0.3,
-  },
-  officeSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-  },
-  officeTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.darkCharcoal,
-    marginBottom: 16,
-    letterSpacing: 0.3,
-  },
-  officeCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    padding: 14,
+
+  floatingInputContainer: {
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  officeContent: {
-    flex: 1,
-  },
-  officeName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 2,
-  },
-  officeAddress: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    lineHeight: 18,
-  },
-  hoursSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-  },
-  hoursTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.darkCharcoal,
-    marginBottom: 16,
-    letterSpacing: 0.3,
-  },
-  hoursBox: {
-    backgroundColor: Colors.white,
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 12,
   },
-  hoursItem: {
+
+  floatingLabel: {
+    position: 'absolute',
+    left: 12,
+    backgroundColor: '#fff',
+    paddingHorizontal: 4,
+  },
+
+  inputRow: {
     flexDirection: 'row',
-    gap: 10,
     alignItems: 'center',
+    gap: 10,
   },
-  hoursText: {
-    fontSize: 13,
-    color: Colors.textPrimary,
-    fontWeight: '500',
+
+  floatingInput: {
     flex: 1,
-    lineHeight: 18,
+    paddingVertical: 10,
   },
-  hoursHighlight: {
-    marginTop: 8,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  bottomSpacing: {
+
+  textAreaInput: {
     height: 80,
   },
 });
