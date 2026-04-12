@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/colors';
+import { TouchableOpacity } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -321,7 +321,7 @@ export default function AboutScreen() {
           resizeMode="cover"
         >
           <LinearGradient
-            colors={['rgba(37, 42, 57, 0.85)', 'rgba(37, 42, 57, 0.98)']}
+            colors={['rgba(184, 108, 10, 0.85)', 'rgba(241, 161, 41, 0.98)']}
             style={styles.heroOverlay}
           >
             <FloatingParticles />
@@ -366,7 +366,7 @@ export default function AboutScreen() {
 
           <View style={styles.visionCard}>
             <LinearGradient
-              colors={[DESIGN_COLORS.darkNavy, '#3A4050']}
+              colors={[DESIGN_COLORS.warmMustard, DESIGN_COLORS.goldenYellow]}
               style={styles.missionIconGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -413,18 +413,6 @@ export default function AboutScreen() {
           </View>
         </View>
 
-        {/* Bottom CTA */}
-        <TouchableOpacity style={styles.ctaButton} activeOpacity={0.8}>
-          <LinearGradient
-            colors={[DESIGN_COLORS.warmMustard, DESIGN_COLORS.goldenYellow]}
-            style={styles.ctaGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Text style={styles.ctaText}>Start Your Journey Today</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-          </LinearGradient>
-        </TouchableOpacity>
       </Animated.View>
 
       <View style={styles.bottomSpacing} />
@@ -432,8 +420,7 @@ export default function AboutScreen() {
   );
 }
 
-// Missing TouchableOpacity import fix
-import { TouchableOpacity } from 'react-native';
+
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 

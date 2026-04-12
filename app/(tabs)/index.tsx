@@ -15,14 +15,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// ─── Design System ────────────────────────────────────────────────────────────
-
 const DS = {
-  // Core palette
   darkNavy: '#1A2235',
   navyMid: '#253047',
   warmMustard: '#D58F16',
@@ -33,7 +31,6 @@ const DS = {
   background: '#F4F6FB',
   border: '#ECEEF4',
 
-  // Typography scale
   fontXXL: 38,
   fontXL: 28,
   fontLG: 20,
@@ -41,7 +38,6 @@ const DS = {
   fontSM: 14,
   fontXS: 12,
 
-  // Spacing
   sp4: 4,
   sp6: 6,
   sp8: 8,
@@ -56,13 +52,11 @@ const DS = {
   sp28: 28,
   sp32: 32,
 
-  // Radius
   radiusSM: 10,
   radiusMD: 16,
   radiusLG: 22,
   radiusXL: 32,
 
-  // Shadows
   shadowSoft: {
     shadowColor: '#1A2235',
     shadowOffset: { width: 0, height: 4 },
@@ -86,14 +80,13 @@ const DS = {
   },
 };
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface WhyJioItem {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   description: string;
 }
+
 interface LoanProduct {
   id: string;
   type: string;
@@ -101,7 +94,9 @@ interface LoanProduct {
   icon: keyof typeof Ionicons.glyphMap;
   bgColor: string;
   accentColor: string;
+  route: string;
 }
+
 interface Testimonial {
   id: string;
   name: string;
@@ -110,18 +105,18 @@ interface Testimonial {
   rating: number;
   text: string;
 }
+
 interface TrustFeature {
   id: string;
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
 }
+
 interface FAQDataItem {
   id: string;
   question: string;
   answer: string;
 }
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
 
 const whyJioData: WhyJioItem[] = [
   {
@@ -156,16 +151,18 @@ const loanProductsData: LoanProduct[] = [
     type: 'Personal Loan',
     description: 'Quick personal loans for all your needs with minimal documentation',
     icon: 'person-outline',
-     bgColor: DS.warmMustard,
+    bgColor: DS.warmMustard,
     accentColor: DS.goldenYellow,
+    route: '/loans/personal',
   },
   {
     id: '2',
     type: 'Home Loan',
     description: 'Make your dream home a reality with our affordable home loans',
     icon: 'home-outline',
-     bgColor: DS.warmMustard,
+    bgColor: DS.warmMustard,
     accentColor: DS.softOlive,
+    route: '/loans/home',
   },
   {
     id: '3',
@@ -174,30 +171,34 @@ const loanProductsData: LoanProduct[] = [
     icon: 'business-outline',
     bgColor: DS.warmMustard,
     accentColor: '#FFFFFF',
+    route: '/loans/business',
   },
   {
     id: '4',
     type: 'Loan Against Property',
     description: 'Unlock the value of your property with our LAP loans',
     icon: 'car-outline',
-     bgColor: DS.warmMustard,
+    bgColor: DS.warmMustard,
     accentColor: DS.goldenYellow,
+    route: '/loans/education',
   },
   {
     id: '5',
     type: 'Education Loan',
-    description: 'nvest in your future with our education financing solutions',
+    description: 'Invest in your future with our education financing solutions',
     icon: 'school-outline',
-     bgColor: DS.warmMustard,
+    bgColor: DS.warmMustard,
     accentColor: DS.softOlive,
+    route: '/loans/education',
   },
   {
     id: '6',
     type: 'Loan Against Credit Card',
-    description: 'Unloack the value of your credit card with our LACC loans',
-    icon: 'school-outline',
-     bgColor: DS.warmMustard,
+    description: 'Unlock the value of your credit card with our LACC loans',
+    icon: 'card-outline',
+    bgColor: DS.warmMustard,
     accentColor: DS.softOlive,
+    route: '/loans/education',
   },
 ];
 
@@ -296,8 +297,6 @@ const faqData: FAQDataItem[] = [
   },
 ];
 
-// ─── Animated Section Wrapper ─────────────────────────────────────────────────
-
 const FadeInView: React.FC<{ children: React.ReactNode; delay?: number; style?: any }> = ({
   children,
   delay = 0,
@@ -332,8 +331,6 @@ const FadeInView: React.FC<{ children: React.ReactNode; delay?: number; style?: 
   );
 };
 
-// ─── Animated Pressable ───────────────────────────────────────────────────────
-
 const ScalePressable: React.FC<{
   children: React.ReactNode;
   onPress?: () => void;
@@ -358,8 +355,6 @@ const ScalePressable: React.FC<{
     </TouchableOpacity>
   );
 };
-
-// ─── Section Header ───────────────────────────────────────────────────────────
 
 const SectionHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
   <View style={sStyles.sectionHeader}>
@@ -402,8 +397,6 @@ const sStyles = StyleSheet.create({
   },
 });
 
-// ─── Why JioFinserv Card ──────────────────────────────────────────────────────
-
 const WhyJioItemCard: React.FC<{ item: WhyJioItem; index: number }> = ({ item, index }) => {
   return (
     <FadeInView delay={index * 100}>
@@ -428,11 +421,11 @@ const WhyJioItemCard: React.FC<{ item: WhyJioItem; index: number }> = ({ item, i
   );
 };
 
-// ─── Loan Product Card ────────────────────────────────────────────────────────
-
 const LoanProductCard: React.FC<{ item: LoanProduct }> = ({ item }) => {
+  const router = useRouter();
+
   return (
-    <ScalePressable>
+    <ScalePressable onPress={() => router.push(item.route as any)}>
       <LinearGradient
         colors={[item.bgColor, `${item.bgColor}CC`]}
         style={styles.loanCard}
@@ -447,8 +440,9 @@ const LoanProductCard: React.FC<{ item: LoanProduct }> = ({ item }) => {
 
         <Text style={styles.loanType}>{item.type}</Text>
         <Text style={styles.loanDescription}>{item.description}</Text>
+
         <View style={styles.loanCardFooter}>
-          <Text style={[styles.applyText, { color: item.accentColor }]}>Explore</Text>
+          <Text style={[styles.applyText, { color: item.accentColor }]}>Explore More</Text>
           <View style={[styles.loanArrowCircle, { backgroundColor: `${item.accentColor}20` }]}>
             <Ionicons name="arrow-forward" size={14} color={item.accentColor} />
           </View>
@@ -787,28 +781,6 @@ export default function HomeScreen() {
         <SectionHeader title="FAQs" subtitle="Everything you need to know" />
         <FAQAccordion items={faqData} />
       </View>
-
-      <FadeInView style={styles.bottomCTAWrap}>
-        <ScalePressable>
-          <LinearGradient
-            colors={[DS.darkNavy, DS.navyMid]}
-            style={styles.bottomCTA}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.bottomCTAInner}>
-              <View>
-                <Text style={styles.bottomCTAHeading}>Ready to get funded?</Text>
-                <Text style={styles.bottomCTASubtext}>Apply in under 2 minutes.</Text>
-              </View>
-              <LinearGradient colors={[DS.warmMustard, DS.goldenYellow]} style={styles.bottomCTAArrow}>
-                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-              </LinearGradient>
-            </View>
-          </LinearGradient>
-        </ScalePressable>
-      </FadeInView>
-
       <View style={{ height: 40 }} />
     </ScrollView>
   );
