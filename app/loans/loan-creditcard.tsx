@@ -27,7 +27,7 @@ const features: FeatureItem[] = [
   { id: '1', label: 'Interest Rate', value: 'Starting from 8.50% p.a.' },
   { id: '2', label: 'Loan Amount', value: 'Up to ₹50 Lakhs' },
   { id: '3', label: 'Tenure', value: '12 to 72 months' },
-  { id: '4', label: 'Processing Fee', value: '1% - 2%' },
+  { id: '4', label: 'Processing Fee', value: '2% - 3%' },
   { id: '5', label: 'Approval Timeline', value: 'Within 48 hours' },
   { id: '6', label: 'Collateral', value: 'Collateral-free available' },
 ];
@@ -69,7 +69,7 @@ const highlights = [
   'No end-use restrictions',
 ];
 
-export default function PersonalLoanScreen() {
+export default function CreditCardLoanScreen() {
   const router = useRouter();
 
   const handleApply = () => {
@@ -107,21 +107,20 @@ export default function PersonalLoanScreen() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
     >
-      {/* Hero Section */}
       <View style={styles.heroSection}>
         <View style={styles.heroIcon}>
-          <Icon name="personal-loan" size={48} color={Colors.white} />
+          <Icon name="calculator" size={48} color={Colors.white} />
         </View>
 
-        <Text style={styles.heroTitle}>Personal Loan</Text>
+        <Text style={styles.heroTitle}>Loan Against Credit Card</Text>
 
         <Text style={styles.heroSubtitle}>
-          Quick funds for all your personal needs.
+          Instant access to funds with flexible repayment
         </Text>
 
         <Text style={styles.heroDescription}>
-          Whether it&apos;s a wedding, vacation, medical emergency, or home
-          renovation - get instant personal loans with minimal documentation.
+          Get quick access to funds with a flexible loan product designed for
+          convenience, fast approval, and easy repayment options.
         </Text>
 
         <View style={styles.heroStatsRow}>
@@ -142,7 +141,6 @@ export default function PersonalLoanScreen() {
         </View>
       </View>
 
-      {/* Key Features */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Key Features</Text>
         <FlatList
@@ -154,7 +152,6 @@ export default function PersonalLoanScreen() {
         />
       </View>
 
-      {/* Benefits */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Benefits</Text>
         <FlatList
@@ -166,7 +163,6 @@ export default function PersonalLoanScreen() {
         />
       </View>
 
-      {/* Additional Highlights */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Why This Loan Stands Out</Text>
         <View style={styles.requirementsBox}>
@@ -179,7 +175,6 @@ export default function PersonalLoanScreen() {
         </View>
       </View>
 
-      {/* Documents / Requirements */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Documents Required</Text>
         <View style={styles.requirementsBox}>
@@ -192,9 +187,8 @@ export default function PersonalLoanScreen() {
         </View>
       </View>
 
-      {/* CTA Buttons */}
       <View style={styles.ctaContainer}>
-    
+       
 
         <TouchableOpacity
           style={styles.calculateButton}

@@ -180,7 +180,7 @@ const loanProductsData: LoanProduct[] = [
     icon: 'car-outline',
     bgColor: DS.warmMustard,
     accentColor: DS.goldenYellow,
-    route: '/loans/education',
+    route: '/loans/loan-property',
   },
   {
     id: '5',
@@ -198,7 +198,7 @@ const loanProductsData: LoanProduct[] = [
     icon: 'card-outline',
     bgColor: DS.warmMustard,
     accentColor: DS.softOlive,
-    route: '/loans/education',
+    route: '/loans/loan-creditcard',
   },
 ];
 

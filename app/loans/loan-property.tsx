@@ -25,33 +25,33 @@ interface BenefitItem {
 
 const features: FeatureItem[] = [
   { id: '1', label: 'Interest Rate', value: 'Starting from 8.50% p.a.' },
-  { id: '2', label: 'Loan Amount', value: 'Up to ₹50 Lakhs' },
-  { id: '3', label: 'Tenure', value: '12 to 72 months' },
-  { id: '4', label: 'Processing Fee', value: '1% - 2%' },
-  { id: '5', label: 'Approval Timeline', value: 'Within 48 hours' },
-  { id: '6', label: 'Collateral', value: 'Collateral-free available' },
+  { id: '2', label: 'Loan Type', value: 'Loan Against Property (LAP)' },
+  { id: '3', label: 'Security', value: 'Property-backed financing' },
+  { id: '4', label: 'Approval Timeline', value: '24–48 hours after documents' },
+  { id: '5', label: 'Documentation', value: 'Minimal basic documents' },
+  { id: '6', label: 'Repayment', value: 'Flexible repayment options' },
 ];
 
 const benefits: BenefitItem[] = [
   {
     id: '1',
-    title: 'No Collateral',
-    description: 'Get funds without pledging any asset or property.',
+    title: 'Unlock Property Value',
+    description: 'Use your residential or commercial property to access larger funding.',
   },
   {
     id: '2',
-    title: 'Quick Disbursal',
-    description: 'Funds credited to your account within 24–48 hours.',
+    title: 'Competitive Interest Rates',
+    description: 'Secured lending can help you access better rates than many unsecured loans.',
   },
   {
     id: '3',
-    title: 'Flexible Use',
-    description: 'Use the loan for any personal expense of your choice.',
+    title: 'Flexible End Use',
+    description: 'Use the funds for business, education, medical, or major personal needs.',
   },
   {
     id: '4',
-    title: 'Easy Repayment',
-    description: 'Choose EMI options that suit your budget.',
+    title: 'Longer Repayment Comfort',
+    description: 'Structured repayment options help make bigger-ticket borrowing manageable.',
   },
 ];
 
@@ -59,17 +59,19 @@ const requirements = [
   'Aadhaar Card',
   'PAN Card',
   'Recent bank statements (last 3–6 months)',
-  'Salary slips or ITR for self-employed applicants',
+  'Income proof or ITR',
   'Address proof',
+  'Property ownership documents',
+  'Property valuation / legal papers as applicable',
 ];
 
 const highlights = [
-  'Minimal documentation required',
-  'Overdraft facility available',
-  'No end-use restrictions',
+  'Useful for high-value financing needs',
+  'Secured against eligible property',
+  'Suitable for personal or business funding requirements',
 ];
 
-export default function PersonalLoanScreen() {
+export default function LoanAgainstPropertyScreen() {
   const router = useRouter();
 
   const handleApply = () => {
@@ -107,21 +109,20 @@ export default function PersonalLoanScreen() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
     >
-      {/* Hero Section */}
       <View style={styles.heroSection}>
         <View style={styles.heroIcon}>
-          <Icon name="personal-loan" size={48} color={Colors.white} />
+          <Icon name="profile" size={48} color={Colors.white} />
         </View>
 
-        <Text style={styles.heroTitle}>Personal Loan</Text>
+        <Text style={styles.heroTitle}>Loan Against Property</Text>
 
         <Text style={styles.heroSubtitle}>
-          Quick funds for all your personal needs.
+          Unlock the value of your property
         </Text>
 
         <Text style={styles.heroDescription}>
-          Whether it&apos;s a wedding, vacation, medical emergency, or home
-          renovation - get instant personal loans with minimal documentation.
+          Access higher-value funding by mortgaging your eligible property while
+          enjoying competitive rates and flexible repayment options.
         </Text>
 
         <View style={styles.heroStatsRow}>
@@ -131,18 +132,17 @@ export default function PersonalLoanScreen() {
           </View>
 
           <View style={styles.heroStatCard}>
-            <Text style={styles.heroStatValue}>₹50L</Text>
-            <Text style={styles.heroStatLabel}>Max Amount</Text>
+            <Text style={styles.heroStatValue}>LAP</Text>
+            <Text style={styles.heroStatLabel}>Secured Loan</Text>
           </View>
 
           <View style={styles.heroStatCard}>
-            <Text style={styles.heroStatValue}>72M</Text>
-            <Text style={styles.heroStatLabel}>Max Tenure</Text>
+            <Text style={styles.heroStatValue}>48H</Text>
+            <Text style={styles.heroStatLabel}>Fast Review</Text>
           </View>
         </View>
       </View>
 
-      {/* Key Features */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Key Features</Text>
         <FlatList
@@ -154,7 +154,6 @@ export default function PersonalLoanScreen() {
         />
       </View>
 
-      {/* Benefits */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Benefits</Text>
         <FlatList
@@ -166,7 +165,6 @@ export default function PersonalLoanScreen() {
         />
       </View>
 
-      {/* Additional Highlights */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Why This Loan Stands Out</Text>
         <View style={styles.requirementsBox}>
@@ -179,7 +177,6 @@ export default function PersonalLoanScreen() {
         </View>
       </View>
 
-      {/* Documents / Requirements */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Documents Required</Text>
         <View style={styles.requirementsBox}>
@@ -192,9 +189,7 @@ export default function PersonalLoanScreen() {
         </View>
       </View>
 
-      {/* CTA Buttons */}
       <View style={styles.ctaContainer}>
-    
 
         <TouchableOpacity
           style={styles.calculateButton}
