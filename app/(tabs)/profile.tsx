@@ -148,26 +148,6 @@ export default function ProfileScreen() {
             <Text style={styles.secondaryButtonText}>Create Account</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Benefits */}
-        <View style={styles.benefitsSection}>
-          <Text style={styles.benefitsTitle}>Why Sign In?</Text>
-          <BenefitItem
-            iconName="info"
-            title="Track Applications"
-            desc="Monitor the status of your loan applications"
-          />
-          <BenefitItem
-            iconName="money"
-            title="Manage Loans"
-            desc="View and manage all your active loans"
-          />
-          <BenefitItem
-            iconName="profile"
-            title="Your Profile"
-            desc="Keep your personal and financial information up to date"
-          />
-        </View>
       </ScrollView>
     );
   }
