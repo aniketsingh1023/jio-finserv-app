@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   ScrollView,
@@ -8,12 +8,12 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
-} from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { useAuth } from '@/store/authStore';
-import { Colors } from '@/constants/colors';
-import { Icon } from '@/components/Icon';
-import * as loanService from '@/services/loan.service';
+} from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useAuth } from "@/store/authStore";
+import { Colors } from "@/constants/colors";
+import { Icon } from "@/components/Icon";
+import * as loanService from "@/services/loan.service";
 
 interface LoanApp {
   id: string;
@@ -27,7 +27,7 @@ interface LoanApp {
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, isAuthenticated, logout, isLoading: authLoading } = useAuth();
-  
+
   const [applications, setApplications] = useState<LoanApp[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -40,7 +40,7 @@ export default function ProfileScreen() {
       const response = await loanService.getMyLoanApplications();
       setApplications(response.applications as LoanApp[]);
     } catch (error: any) {
-      console.error('Failed to fetch applications:', error);
+      console.error("Failed to fetch applications:", error);
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +49,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     React.useCallback(() => {
       fetchApplications();
-    }, [isAuthenticated])
+    }, [isAuthenticated]),
   );
 
   const handleRefresh = async () => {
@@ -59,53 +59,53 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', onPress: () => {} },
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", onPress: () => {} },
       {
-        text: 'Logout',
+        text: "Logout",
         onPress: async () => {
           await logout();
-          router.replace('/(tabs)/profile');
+          router.replace("/(tabs)/profile");
         },
       },
     ]);
   };
 
   const handleEditProfile = () => {
-    router.push('/profile/edit');
+    router.push("/profile/edit");
   };
 
   const handleStartNewApplication = () => {
-    router.push('/applications/new');
+    router.push("/applications/new");
   };
 
   const handleLogin = () => {
-    router.push('/auth/login');
+    router.push("/auth/login");
   };
 
   const handleSignup = () => {
-    router.push('/auth/signup');
+    router.push("/auth/signup");
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return date.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending':
-        return '#FF9500';
-      case 'approved':
-        return '#34C759';
-      case 'rejected':
-        return '#FF3B30';
-      case 'processing':
-        return '#007AFF';
+      case "pending":
+        return "#FF9500";
+      case "approved":
+        return "#34C759";
+      case "rejected":
+        return "#FF3B30";
+      case "processing":
+        return "#007AFF";
       default:
         return Colors.textSecondary;
     }
@@ -127,7 +127,8 @@ export default function ProfileScreen() {
           </View>
           <Text style={styles.promptTitle}>Sign In to Your Account</Text>
           <Text style={styles.promptText}>
-            Log in to view your loans, track applications, and manage your account
+            Log in to view your loans, track applications, and manage your
+            account
           </Text>
 
           {/* Login Button */}
@@ -154,9 +155,11 @@ export default function ProfileScreen() {
 
   // Logged in state
   return (
-    <ScrollView 
+    <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+      }
     >
       {/* Header */}
       <View style={styles.header}>
@@ -168,42 +171,40 @@ export default function ProfileScreen() {
         {/* Avatar */}
         <View style={styles.avatarContainer}>
           <Text style={styles.avatarText}>
-            {user?.name?.charAt(0).toUpperCase() || 'U'}
+            {user?.name?.charAt(0).toUpperCase() || "U"}
           </Text>
         </View>
 
         {/* User Info */}
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{user?.name || 'User'}</Text>
+          <Text style={styles.userName}>{user?.name || "User"}</Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
-          
-          {user?.phone && (
-            <Text style={styles.userPhone}>📱 {user.phone}</Text>
-          )}
+
+          {user?.phone && <Text style={styles.userPhone}>📱 {user.phone}</Text>}
         </View>
 
         {/* Edit Button */}
         <TouchableOpacity
-          style={styles.editButton}
+          style={styles.editProfileButton}
           onPress={handleEditProfile}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
-          <Icon name="info" size={20} color={Colors.primary} />
+          <Text style={styles.editButtonText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>
 
       {/* Profile Details Section */}
       <View style={styles.detailsSection}>
         <Text style={styles.sectionTitle}>Profile Details</Text>
-        
+
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Name</Text>
-          <Text style={styles.detailValue}>{user?.name || '-'}</Text>
+          <Text style={styles.detailValue}>{user?.name || "-"}</Text>
         </View>
 
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Email</Text>
-          <Text style={styles.detailValue}>{user?.email || '-'}</Text>
+          <Text style={styles.detailValue}>{user?.email || "-"}</Text>
         </View>
 
         {user?.phone && (
@@ -263,7 +264,9 @@ export default function ProfileScreen() {
               onPress={handleStartNewApplication}
               activeOpacity={0.7}
             >
-              <Text style={styles.startAppButtonText}>Start New Application</Text>
+              <Text style={styles.startAppButtonText}>
+                Start New Application
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -272,15 +275,15 @@ export default function ProfileScreen() {
               <View key={app.id} style={styles.applicationCard}>
                 <View style={styles.appHeader}>
                   <View style={styles.appTitleContainer}>
-                    <Text style={styles.appLoanType}>
-                      {app.loanType}
+                    <Text style={styles.appLoanType}>{app.loanType}</Text>
+                    <Text style={styles.appRefId}>
+                      Ref: {app.referenceId.slice(0, 8)}
                     </Text>
-                    <Text style={styles.appRefId}>Ref: {app.referenceId.slice(0, 8)}</Text>
                   </View>
-                  <View 
+                  <View
                     style={[
                       styles.statusBadge,
-                      { backgroundColor: getStatusColor(app.status) }
+                      { backgroundColor: getStatusColor(app.status) },
                     ]}
                   >
                     <Text style={styles.statusText}>{app.status}</Text>
@@ -291,7 +294,7 @@ export default function ProfileScreen() {
                   <View style={styles.appDetailRow}>
                     <Text style={styles.appDetailLabel}>Amount:</Text>
                     <Text style={styles.appDetailValue}>
-                      ₹{app.loanAmount.toLocaleString('en-IN')}
+                      ₹{app.loanAmount.toLocaleString("en-IN")}
                     </Text>
                   </View>
                   <View style={styles.appDetailRow}>
@@ -356,64 +359,64 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
   },
-  
+
   // Logged out state
   promptContainer: {
     paddingHorizontal: 16,
     paddingVertical: 32,
-    alignItems: 'center',
+    alignItems: "center",
   },
   promptIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: Colors.primary + "15",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 20,
   },
   promptTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 8,
   },
   promptText: {
     fontSize: 14,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 24,
     lineHeight: 20,
   },
   primaryButton: {
-    width: '100%',
+    width: "100%",
     backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 12,
   },
   primaryButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.white,
   },
   secondaryButton: {
-    width: '100%',
+    width: "100%",
     backgroundColor: Colors.white,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.primary,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   secondaryButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.primary,
   },
   benefitsSection: {
@@ -422,22 +425,22 @@ const styles = StyleSheet.create({
   },
   benefitsTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
     marginBottom: 16,
   },
   benefitItem: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 16,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   benefitIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: Colors.primary + "15",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
     marginTop: 2,
   },
@@ -446,7 +449,7 @@ const styles = StyleSheet.create({
   },
   benefitTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textPrimary,
     marginBottom: 4,
   },
@@ -458,12 +461,12 @@ const styles = StyleSheet.create({
 
   // Logged in state
   profileCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     margin: 16,
     padding: 16,
     backgroundColor: Colors.white,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     shadowColor: Colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -475,13 +478,13 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   avatarText: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.white,
   },
   userInfo: {
@@ -489,7 +492,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
     marginBottom: 4,
   },
@@ -506,9 +509,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: Colors.primary + "15",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   detailsSection: {
@@ -520,13 +523,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
     marginBottom: 16,
   },
   detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
@@ -534,12 +537,12 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 13,
     color: Colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   detailValue: {
     fontSize: 13,
     color: Colors.textPrimary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   applicationsSection: {
@@ -547,30 +550,30 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   newAppButton: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.primary,
   },
   loadingContainer: {
     height: 150,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyState: {
     backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 24,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyStateTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
     marginTop: 12,
     marginBottom: 8,
@@ -578,7 +581,7 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 13,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 16,
   },
   startAppButton: {
@@ -589,7 +592,7 @@ const styles = StyleSheet.create({
   },
   startAppButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.white,
   },
   applicationsList: {
@@ -603,9 +606,9 @@ const styles = StyleSheet.create({
     borderLeftColor: Colors.primary,
   },
   appHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
   appTitleContainer: {
@@ -613,7 +616,7 @@ const styles = StyleSheet.create({
   },
   appLoanType: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textPrimary,
     marginBottom: 4,
   },
@@ -628,7 +631,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.white,
   },
   appDetails: {
@@ -637,8 +640,8 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   appDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 8,
   },
   appDetailLabel: {
@@ -647,27 +650,40 @@ const styles = StyleSheet.create({
   },
   appDetailValue: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textPrimary,
   },
 
   logoutButton: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginHorizontal: 16,
     marginBottom: 16,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#FF3B30' + '15',
+    backgroundColor: "#FF3B30" + "15",
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
   logoutButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FF3B30',
+    fontWeight: "600",
+    color: "#FF3B30",
+  },
+
+  editProfileButton: {
+    backgroundColor: "#eea21f", // yellow / gold
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  editButtonText: {
+    color: "#1F2937", // dark text for contrast
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
-
-          
