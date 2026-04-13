@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useCallback } from 'react';
 import * as authService from '../services/auth.service';
 import * as tokenStorage from '../utils/storage';
 
@@ -16,8 +16,17 @@ export interface AuthUser {
   updatedAt: string;
 }
 
+export interface SignupPayload {
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+  city: string;
+  address: string;
+  pincode: string;
+}
+
 export interface AuthContextType {
-  // State
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
@@ -25,9 +34,8 @@ export interface AuthContextType {
   error: string | null;
   isSessionRestored: boolean;
 
-  // Actions
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string, phone?: string) => Promise<void>;
+  signup: (payload: SignupPayload) => Promise<void>;
   logout: () => Promise<void>;
   restoreSession: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -63,6 +71,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload, error: null };
+
     case 'SET_USER':
       return {
         ...state,
@@ -71,16 +80,41 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
         error: null,
       };
+
     case 'SET_ERROR':
-      return { ...state, isLoading: false, error: action.payload };
+      return {
+        ...state,
+        isLoading: false,
+        error: action.payload,
+      };
+
     case 'CLEAR_ERROR':
-      return { ...state, error: null };
+      return {
+        ...state,
+        error: null,
+      };
+
     case 'LOGOUT':
-      return { ...state, user: null, token: null, isLoading: false };
+      return {
+        ...state,
+        user: null,
+        token: null,
+        isLoading: false,
+      };
+
     case 'UPDATE_USER':
-      return { ...state, user: action.payload };
+      return {
+        ...state,
+        user: action.payload,
+      };
+
     case 'SESSION_RESTORED':
-      return { ...state, isSessionRestored: true, isLoading: false };
+      return {
+        ...state,
+        isSessionRestored: true,
+        isLoading: false,
+      };
+
     default:
       return state;
   }
@@ -95,17 +129,19 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  /**
-   * Login action
-   */
   const login = useCallback(async (email: string, password: string) => {
     dispatch({ type: 'SET_LOADING', payload: true });
+
     try {
       const response = await authService.login({ email, password });
       await tokenStorage.saveToken(response.token);
+
       dispatch({
         type: 'SET_USER',
-        payload: { user: response.user, token: response.token },
+        payload: {
+          user: response.user,
+          token: response.token,
+        },
       });
     } catch (error: any) {
       dispatch({
@@ -116,35 +152,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  /**
-   * Signup action
-   */
-  const signup = useCallback(
-    async (email: string, password: string, name: string, phone?: string) => {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      try {
-        const response = await authService.signup({ email, password, name, phone });
-        await tokenStorage.saveToken(response.token);
-        dispatch({
-          type: 'SET_USER',
-          payload: { user: response.user, token: response.token },
-        });
-      } catch (error: any) {
-        dispatch({
-          type: 'SET_ERROR',
-          payload: error.message || 'Signup failed',
-        });
-        throw error;
-      }
-    },
-    []
-  );
+  const signup = useCallback(async (payload: SignupPayload) => {
+    dispatch({ type: 'SET_LOADING', payload: true });
 
-  /**
-   * Logout action
-   */
+    try {
+      const response = await authService.signup({
+        email: payload.email,
+        password: payload.password,
+        name: payload.fullName,
+        phone: payload.phone,
+        city: payload.city,
+        address: payload.address,
+        pincode: payload.pincode,
+      });
+
+      await tokenStorage.saveToken(response.token);
+
+      dispatch({
+        type: 'SET_USER',
+        payload: {
+          user: response.user,
+          token: response.token,
+        },
+      });
+    } catch (error: any) {
+      dispatch({
+        type: 'SET_ERROR',
+        payload: error.message || 'Signup failed',
+      });
+      throw error;
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
+
     try {
       await tokenStorage.removeToken();
       dispatch({ type: 'LOGOUT' });
@@ -154,13 +196,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  /**
-   * Refresh user data from server
-   */
   const refreshUser = useCallback(async () => {
-    if (!state.token) {
-      return;
-    }
+    if (!state.token) return;
+
     try {
       const response = await authService.getCurrentUserProfile();
       dispatch({
@@ -172,24 +210,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [state.token]);
 
-  /**
-   * Restore session from stored token
-   * Call this on app startup
-   */
   const restoreSession = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
+
     try {
       const token = await tokenStorage.getToken();
+
       if (token) {
-        // Try to fetch the current user profile
         try {
           const response = await authService.getCurrentUserProfile();
+
           dispatch({
             type: 'SET_USER',
-            payload: { user: response.user, token },
+            payload: {
+              user: response.user,
+              token,
+            },
           });
         } catch (error) {
-          // If we can't fetch the profile, clear the token
           console.error('Failed to restore session:', error);
           await tokenStorage.removeToken();
           dispatch({ type: 'SESSION_RESTORED' });
@@ -203,9 +241,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  /**
-   * Clear error
-   */
   const clearError = useCallback(() => {
     dispatch({ type: 'CLEAR_ERROR' });
   }, []);
@@ -221,20 +256,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearError,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-/**
- * Hook to use auth context
- */
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuth must be used within AuthProvider');
   }
+
   return context;
 };

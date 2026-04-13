@@ -1,4 +1,3 @@
-
 import { post, get, put } from './api';
 
 export interface AuthResponse {
@@ -9,6 +8,11 @@ export interface AuthResponse {
     email: string;
     name: string;
     phone: string | null;
+    gender?: string | null;
+    dob?: string | null;
+    address?: string | null;
+    city?: string | null;
+    pincode?: string | null;
     createdAt: string;
     updatedAt: string;
   };
@@ -33,6 +37,9 @@ export interface SignupRequest {
   password: string;
   name: string;
   phone?: string;
+  city: string;
+  address: string;
+  pincode: string;
 }
 
 export interface LoginRequest {
@@ -64,7 +71,8 @@ export const getCurrentUserProfile = async (): Promise<{ message: string; user: 
 /**
  * Update current user profile (requires authentication)
  */
-export const updateUserProfile = async (data: Partial<UserProfile>): Promise<{ message: string; user: UserProfile }> => {
+export const updateUserProfile = async (
+  data: Partial<UserProfile>
+): Promise<{ message: string; user: UserProfile }> => {
   return put<{ message: string; user: UserProfile }>('/api/users/me', data);
 };
-

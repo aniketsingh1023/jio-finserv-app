@@ -19,6 +19,9 @@ interface SignupFormData {
   fullName: string;
   email: string;
   phone: string;
+  city: string;
+  address: string;
+  pincode: string;
   password: string;
   confirmPassword: string;
   agreeToTerms: boolean;
@@ -32,19 +35,23 @@ export default function SignupScreen() {
     fullName: '',
     email: '',
     phone: '',
+    city: '',
+    address: '',
+    pincode: '',
     password: '',
     confirmPassword: '',
     agreeToTerms: false,
   });
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  const handleInputChange = (field: keyof SignupFormData, value: any) => {
-    setFormData({ ...formData, [field]: value });
-    // Clear validation error for this field when user starts typing
+  const handleInputChange = (field: keyof SignupFormData, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
     if (validationErrors[field]) {
-      setValidationErrors({ ...validationErrors, [field]: '' });
+      setValidationErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -52,42 +59,43 @@ export default function SignupScreen() {
     try {
       clearError();
 
-      // Check terms agreement
       if (!formData.agreeToTerms) {
         Alert.alert('Terms Required', 'Please agree to the terms and conditions');
         return;
       }
 
-      // Validate form
       const errors = validateSignupForm({
         fullName: formData.fullName,
         email: formData.email,
         phone: formData.phone,
+        city: formData.city,
+        address: formData.address,
+        pincode: formData.pincode,
         password: formData.password,
         confirmPassword: formData.confirmPassword,
       });
 
       if (errors.length > 0) {
         const errorMap: Record<string, string> = {};
-        errors.forEach((err) => {
+        errors.forEach((err: { field: string; message: string }) => {
           errorMap[err.field] = err.message;
         });
         setValidationErrors(errorMap);
         return;
       }
 
-      // Perform signup
-      await signup(
-        formData.email,
-        formData.password,
-        formData.fullName,
-        formData.phone || undefined
-      );
+      await signup({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        phone: formData.phone || undefined,
+        city: formData.city,
+        address: formData.address,
+        pincode: formData.pincode,
+      });
 
-      // Navigate to profile on successful signup
       router.replace('/(tabs)/profile');
     } catch (err: any) {
-      // Show error message
       Alert.alert('Signup Failed', err.message || 'Unable to create account');
     }
   };
@@ -106,7 +114,6 @@ export default function SignupScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.welcomeTitle}>Create JioFinserv Account</Text>
           <Text style={styles.welcomeSubtitle}>
@@ -114,16 +121,13 @@ export default function SignupScreen() {
           </Text>
         </View>
 
-        {/* Error Alert */}
         {error && (
           <View style={styles.errorBanner}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
 
-        {/* Form */}
         <View style={styles.form}>
-          {/* Full Name Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Full Name</Text>
             <TextInput
@@ -137,12 +141,11 @@ export default function SignupScreen() {
               onChangeText={(value) => handleInputChange('fullName', value)}
               editable={!isLoading}
             />
-            {validationErrors.fullName && (
+            {validationErrors.fullName ? (
               <Text style={styles.errorMessage}>{validationErrors.fullName}</Text>
-            )}
+            ) : null}
           </View>
 
-          {/* Email Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email Address</Text>
             <TextInput
@@ -158,12 +161,11 @@ export default function SignupScreen() {
               onChangeText={(value) => handleInputChange('email', value)}
               editable={!isLoading}
             />
-            {validationErrors.email && (
+            {validationErrors.email ? (
               <Text style={styles.errorMessage}>{validationErrors.email}</Text>
-            )}
+            ) : null}
           </View>
 
-          {/* Phone Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone Number (Optional)</Text>
             <TextInput
@@ -179,12 +181,71 @@ export default function SignupScreen() {
               editable={!isLoading}
               maxLength={15}
             />
-            {validationErrors.phone && (
+            {validationErrors.phone ? (
               <Text style={styles.errorMessage}>{validationErrors.phone}</Text>
-            )}
+            ) : null}
           </View>
 
-          {/* Password Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>City</Text>
+            <TextInput
+              style={[
+                styles.input,
+                validationErrors.city ? styles.inputError : null,
+              ]}
+              placeholder="Enter your city"
+              placeholderTextColor={Colors.textTertiary}
+              value={formData.city}
+              onChangeText={(value) => handleInputChange('city', value)}
+              editable={!isLoading}
+            />
+            {validationErrors.city ? (
+              <Text style={styles.errorMessage}>{validationErrors.city}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Address</Text>
+            <TextInput
+              style={[
+                styles.input,
+                styles.textArea,
+                validationErrors.address ? styles.inputError : null,
+              ]}
+              placeholder="Enter your address"
+              placeholderTextColor={Colors.textTertiary}
+              value={formData.address}
+              onChangeText={(value) => handleInputChange('address', value)}
+              editable={!isLoading}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+            {validationErrors.address ? (
+              <Text style={styles.errorMessage}>{validationErrors.address}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Pincode</Text>
+            <TextInput
+              style={[
+                styles.input,
+                validationErrors.pincode ? styles.inputError : null,
+              ]}
+              placeholder="Enter your pincode"
+              placeholderTextColor={Colors.textTertiary}
+              keyboardType="number-pad"
+              value={formData.pincode}
+              onChangeText={(value) => handleInputChange('pincode', value)}
+              editable={!isLoading}
+              maxLength={6}
+            />
+            {validationErrors.pincode ? (
+              <Text style={styles.errorMessage}>{validationErrors.pincode}</Text>
+            ) : null}
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
             <View
@@ -211,12 +272,11 @@ export default function SignupScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-            {validationErrors.password && (
+            {validationErrors.password ? (
               <Text style={styles.errorMessage}>{validationErrors.password}</Text>
-            )}
+            ) : null}
           </View>
 
-          {/* Confirm Password Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Confirm Password</Text>
             <View
@@ -231,9 +291,7 @@ export default function SignupScreen() {
                 placeholderTextColor={Colors.textTertiary}
                 secureTextEntry={!showConfirmPassword}
                 value={formData.confirmPassword}
-                onChangeText={(value) =>
-                  handleInputChange('confirmPassword', value)
-                }
+                onChangeText={(value) => handleInputChange('confirmPassword', value)}
                 editable={!isLoading}
               />
               <TouchableOpacity
@@ -245,14 +303,13 @@ export default function SignupScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-            {validationErrors.confirmPassword && (
+            {validationErrors.confirmPassword ? (
               <Text style={styles.errorMessage}>
                 {validationErrors.confirmPassword}
               </Text>
-            )}
+            ) : null}
           </View>
 
-          {/* Terms Checkbox */}
           <TouchableOpacity
             style={styles.termsContainer}
             onPress={() =>
@@ -266,16 +323,14 @@ export default function SignupScreen() {
                 formData.agreeToTerms && styles.checkboxChecked,
               ]}
             >
-              {formData.agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
+              {formData.agreeToTerms ? <Text style={styles.checkmark}>✓</Text> : null}
             </View>
             <Text style={styles.termsText}>
-              I agree to the{' '}
-              <Text style={styles.termsLink}>Terms and Conditions</Text> and{' '}
+              I agree to the <Text style={styles.termsLink}>Terms and Conditions</Text> and{' '}
               <Text style={styles.termsLink}>Privacy Policy</Text>
             </Text>
           </TouchableOpacity>
 
-          {/* Sign Up Button */}
           <TouchableOpacity
             style={[styles.signupButton, isLoading && styles.buttonDisabled]}
             onPress={handleSignup}
@@ -288,14 +343,12 @@ export default function SignupScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Login Link */}
         <View style={styles.loginPrompt}>
           <Text style={styles.loginText}>Already have an account? </Text>
           <TouchableOpacity onPress={handleLogin} disabled={isLoading}>
             <Text style={styles.loginLink}>Log In</Text>
           </TouchableOpacity>
         </View>
-
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -370,6 +423,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     color: Colors.textPrimary,
+  },
+  textArea: {
+    minHeight: 90,
   },
   passwordInputWrapper: {
     flexDirection: 'row',

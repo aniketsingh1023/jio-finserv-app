@@ -63,6 +63,9 @@ export const validateSignupForm = (formData: {
   email: string;
   phone?: string;
   password: string;
+   city:string;
+   address:string;
+   pincode:string;
   confirmPassword: string;
 }): ValidationError[] => {
   const errors: ValidationError[] = [];
