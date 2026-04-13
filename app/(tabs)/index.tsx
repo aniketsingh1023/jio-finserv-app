@@ -452,8 +452,6 @@ const LoanProductCard: React.FC<{ item: LoanProduct }> = ({ item }) => {
   );
 };
 
-// ─── Testimonial Section ──────────────────────────────────────────────────────
-
 const TestimonialSection: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -554,8 +552,6 @@ const TestimonialSection: React.FC = () => {
   );
 };
 
-// ─── Trust Carousel ───────────────────────────────────────────────────────────
-
 const TrustCarousel: React.FC = () => {
   const translateX = useRef(new Animated.Value(0)).current;
   const infiniteData = [...trustFeaturesData, ...trustFeaturesData, ...trustFeaturesData];
@@ -590,8 +586,6 @@ const TrustCarousel: React.FC = () => {
     </View>
   );
 };
-
-// ─── FAQ Accordion ────────────────────────────────────────────────────────────
 
 const FAQItemCard: React.FC<{ item: FAQDataItem; isLast: boolean }> = ({ item, isLast }) => {
   const [expanded, setExpanded] = useState(false);
@@ -665,8 +659,6 @@ const FAQAccordion: React.FC<{ items: FAQDataItem[] }> = ({ items }) => (
   </View>
 );
 
-// ─── Stats Row ────────────────────────────────────────────────────────────────
-
 const StatsRow: React.FC = () => (
   <View style={styles.statsRow}>
     {[
@@ -683,9 +675,9 @@ const StatsRow: React.FC = () => (
   </View>
 );
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-
 export default function HomeScreen() {
+  const router = useRouter();
+
   return (
     <ScrollView
       style={styles.container}
@@ -723,25 +715,24 @@ export default function HomeScreen() {
             </FadeInView>
 
             <FadeInView delay={500} style={styles.heroCTARow}>
-              <ScalePressable>
+              <ScalePressable onPress={() => router.push('/profile')}>
                 <LinearGradient
                   colors={[DS.warmMustard, DS.goldenYellow]}
                   style={styles.getStartedButton}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.getStartedText}>Get Started</Text>
+                  <Text style={styles.getStartedText}>Apply Now</Text>
                   <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
                 </LinearGradient>
               </ScalePressable>
 
-              <ScalePressable>
+              <ScalePressable onPress={() => router.push('/emi-calculator')}>
                 <View style={styles.eligibilityButton}>
                   <Text style={styles.eligibilityText}>Calculate EMI</Text>
                 </View>
               </ScalePressable>
             </FadeInView>
-
           </LinearGradient>
         </ImageBackground>
       </View>
@@ -785,8 +776,6 @@ export default function HomeScreen() {
     </ScrollView>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {

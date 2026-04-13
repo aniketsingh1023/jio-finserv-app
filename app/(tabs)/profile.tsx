@@ -263,7 +263,7 @@ export default function ProfileScreen() {
             onPress={handleStartNewApplication}
             activeOpacity={0.7}
           >
-            <Text style={styles.newAppButton}>+ New</Text>
+            <Text style={styles.newAppButton}>Start New Application</Text>
           </TouchableOpacity>
         </View>
 

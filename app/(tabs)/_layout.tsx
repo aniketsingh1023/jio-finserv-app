@@ -7,19 +7,16 @@ import { Colors } from '@/constants/colors';
 import { Icon } from '@/components/Icon';
 import { GlobalHeader } from '@/components/GlobalHeader';
 
-/**
- * Tab Layout with Global Header and Bottom Navigation
- * Provides persistent header and tab navigation across all screens
- */
+
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Global Header - Visible on all tab screens */}
+      {/* Header - Visible on all tab screens */}
       <GlobalHeader />
 
-      {/* Tab Navigation with persistent bottom nav */}
+      {/* bottom nav */}
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: Colors.primary,

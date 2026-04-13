@@ -20,7 +20,6 @@ import { Colors } from '@/constants/colors';
 type Step = 1 | 2 | 3 | 4 | 5;
 
 interface FormData {
-  // Personal Details
   fullName: string;
   email: string;
   phone: string;
@@ -29,7 +28,7 @@ interface FormData {
   address: string;
   city: string;
   pincode: string;
-  // Loan Details
+
   loanType: string;
   loanAmount: string;
   companyName: string;
@@ -38,7 +37,7 @@ interface FormData {
   primaryBank: string;
   cibilScore: string;
   bankStatementPdf: string;
-  // KYC Details
+
   aadharNumber: string;
   panNumber: string;
   aadharFrontImage: string;
@@ -48,7 +47,7 @@ interface FormData {
   panCardPdf: string;
   nomineeName: string;
   nomineeRelation: string;
-  // Payment Details
+
   paymentMethod: string;
   cardNumber: string;
   expiryDate: string;
@@ -64,11 +63,33 @@ const LOAN_TYPES = [
   'Loan Against Credit Card',
 ];
 
+const GENDER_OPTIONS = ['', 'Male', 'Female', 'Other'];
+const PAYMENT_METHODS = ['Credit Card', 'Debit Card'];
+
+const onlyLettersAndSpaces = (value: string) => value.replace(/[^A-Za-z ]/g, '');
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
+const onlyDecimal = (value: string) => {
+  const cleaned = value.replace(/[^0-9.]/g, '');
+  const parts = cleaned.split('.');
+  if (parts.length <= 1) return cleaned;
+  return `${parts[0]}.${parts.slice(1).join('')}`;
+};
+
+const isValidDateString = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value);
+  return !isNaN(date.getTime());
+};
+
+const isValidExpiry = (value: string) => /^(0[1-9]|1[0-2])\/\d{2}$/.test(value);
+
 export default function NewLoanApplicationScreen() {
   const router = useRouter();
   const { user } = useAuth();
+
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState<FormData>({
     fullName: user?.name || '',
     email: user?.email || '',
@@ -78,6 +99,7 @@ export default function NewLoanApplicationScreen() {
     address: user?.address || '',
     city: user?.city || '',
     pincode: user?.pincode || '',
+
     loanType: 'Personal',
     loanAmount: '',
     companyName: '',
@@ -86,6 +108,7 @@ export default function NewLoanApplicationScreen() {
     primaryBank: '',
     cibilScore: '',
     bankStatementPdf: '',
+
     aadharNumber: '',
     panNumber: '',
     aadharFrontImage: '',
@@ -95,60 +118,238 @@ export default function NewLoanApplicationScreen() {
     panCardPdf: '',
     nomineeName: '',
     nomineeRelation: '',
+
     paymentMethod: 'Credit Card',
     cardNumber: '',
     expiryDate: '',
     cvv: '',
   });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData({ ...formData, [field]: value });
+    let sanitizedValue = value;
+
+    switch (field) {
+      case 'fullName':
+      case 'city':
+      case 'nomineeName':
+      case 'nomineeRelation':
+        sanitizedValue = onlyLettersAndSpaces(value);
+        break;
+
+      case 'companyName':
+      case 'primaryBank':
+        sanitizedValue = value.replace(/[^A-Za-z0-9 .,&()-]/g, '');
+        break;
+
+      case 'phone':
+        sanitizedValue = onlyDigits(value).slice(0, 10);
+        break;
+
+      case 'pincode':
+        sanitizedValue = onlyDigits(value).slice(0, 6);
+        break;
+
+      case 'loanAmount':
+      case 'monthlyIncome':
+      case 'existingEmi':
+        sanitizedValue = onlyDecimal(value);
+        break;
+
+      case 'cibilScore':
+        sanitizedValue = onlyDigits(value).slice(0, 3);
+        break;
+
+      case 'aadharNumber':
+        sanitizedValue = onlyDigits(value).slice(0, 12);
+        break;
+
+      case 'panNumber':
+        sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10);
+        break;
+
+      case 'cardNumber': {
+        const digits = onlyDigits(value).slice(0, 16);
+        sanitizedValue = digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+        break;
+      }
+
+      case 'expiryDate': {
+        const digits = onlyDigits(value).slice(0, 4);
+        if (digits.length <= 2) {
+          sanitizedValue = digits;
+        } else {
+          sanitizedValue = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+        }
+        break;
+      }
+
+      case 'cvv':
+        sanitizedValue = onlyDigits(value).slice(0, 4);
+        break;
+
+      case 'email':
+        sanitizedValue = value.trim().toLowerCase();
+        break;
+
+      case 'dob':
+        sanitizedValue = value.replace(/[^\d-]/g, '').slice(0, 10);
+        break;
+
+      default:
+        sanitizedValue = value;
+    }
+
+    setFormData((prev) => ({ ...prev, [field]: sanitizedValue }));
+
     if (errors[field]) {
-      setErrors({ ...errors, [field]: '' });
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
   const validateStep = (step: Step): boolean => {
     const newErrors: Record<string, string> = {};
 
+    const nameRegex = /^[A-Za-z ]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    const phoneRegex = /^[6-9]\d{9}$/;
+    const cityRegex = /^[A-Za-z ]+$/;
+    const pincodeRegex = /^\d{6}$/;
+    const aadharRegex = /^\d{12}$/;
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
     if (step === 1) {
-      // Personal Details validation
-      if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
-      if (!formData.email.trim()) newErrors.email = 'Email is required';
-      if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = 'Invalid email';
-      if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
-      if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, '')))
-        newErrors.phone = 'Phone must be 10 digits';
-      if (!formData.address.trim()) newErrors.address = 'Address is required';
-      if (!formData.city.trim()) newErrors.city = 'City is required';
-      if (!formData.pincode.trim()) newErrors.pincode = 'Pincode is required';
-    } else if (step === 2) {
-      // Loan Details validation
-      if (!formData.loanType) newErrors.loanType = 'Loan type is required';
-      if (!formData.loanAmount) newErrors.loanAmount = 'Loan amount is required';
-      if (isNaN(parseFloat(formData.loanAmount)))
-        newErrors.loanAmount = 'Loan amount must be a number';
-    } else if (step === 3) {
-      // KYC Details validation
-      if (!formData.aadharNumber) newErrors.aadharNumber = 'Aadhar number is required';
-      if (!/^\d{12}$/.test(formData.aadharNumber))
-        newErrors.aadharNumber = 'Aadhar must be 12 digits';
-      if (!formData.panNumber) newErrors.panNumber = 'PAN number is required';
-      if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(formData.panNumber))
-        newErrors.panNumber = 'Invalid PAN format';
-      if (!formData.nomineeName) newErrors.nomineeName = 'Nominee name is required';
-    } else if (step === 5) {
-      // Payment Details validation
-      if (!formData.cardNumber) newErrors.cardNumber = 'Card number is required';
-      if (!/^\d{16}$/.test(formData.cardNumber.replace(/\s/g, '')))
-        newErrors.cardNumber = 'Card number must be 16 digits';
-      if (!formData.expiryDate) newErrors.expiryDate = 'Expiry date is required';
-      if (!/^\d{2}\/\d{2}$/.test(formData.expiryDate))
-        newErrors.expiryDate = 'Format must be MM/YY';
-      if (!formData.cvv) newErrors.cvv = 'CVV is required';
-      if (!/^\d{3,4}$/.test(formData.cvv))
-        newErrors.cvv = 'CVV must be 3-4 digits';
+      if (!formData.fullName.trim()) {
+        newErrors.fullName = 'Full name is required';
+      } else if (!nameRegex.test(formData.fullName.trim())) {
+        newErrors.fullName = 'Only letters and spaces are allowed';
+      }
+
+      if (!formData.email.trim()) {
+        newErrors.email = 'Email is required';
+      } else if (!emailRegex.test(formData.email.trim())) {
+        newErrors.email = 'Email must be a valid @gmail.com address';
+      }
+
+      if (!formData.phone.trim()) {
+        newErrors.phone = 'Phone is required';
+      } else if (!phoneRegex.test(formData.phone)) {
+        newErrors.phone = 'Phone number must be 10 digits and start with 6-9';
+      }
+
+      if (formData.dob && !isValidDateString(formData.dob)) {
+        newErrors.dob = 'Date of birth must be in YYYY-MM-DD format';
+      }
+
+      if (formData.gender && !GENDER_OPTIONS.includes(formData.gender)) {
+        newErrors.gender = 'Please select a valid gender';
+      }
+
+      if (!formData.address.trim()) {
+        newErrors.address = 'Address is required';
+      }
+
+      if (!formData.city.trim()) {
+        newErrors.city = 'City is required';
+      } else if (!cityRegex.test(formData.city.trim())) {
+        newErrors.city = 'City can contain only letters and spaces';
+      }
+
+      if (!formData.pincode.trim()) {
+        newErrors.pincode = 'Pincode is required';
+      } else if (!pincodeRegex.test(formData.pincode)) {
+        newErrors.pincode = 'Pincode must be exactly 6 digits';
+      }
+    }
+
+    if (step === 2) {
+      if (!formData.loanType) {
+        newErrors.loanType = 'Loan type is required';
+      }
+
+      if (!formData.loanAmount.trim()) {
+        newErrors.loanAmount = 'Loan amount is required';
+      } else if (isNaN(Number(formData.loanAmount)) || Number(formData.loanAmount) <= 0) {
+        newErrors.loanAmount = 'Loan amount must be a positive number';
+      }
+
+      if (formData.monthlyIncome) {
+        if (isNaN(Number(formData.monthlyIncome)) || Number(formData.monthlyIncome) <= 0) {
+          newErrors.monthlyIncome = 'Monthly income must be a positive number';
+        }
+      }
+
+      if (formData.existingEmi) {
+        if (isNaN(Number(formData.existingEmi)) || Number(formData.existingEmi) < 0) {
+          newErrors.existingEmi = 'Existing EMI cannot be negative';
+        }
+      }
+
+      if (formData.cibilScore) {
+        const score = Number(formData.cibilScore);
+        if (isNaN(score) || score < 300 || score > 900) {
+          newErrors.cibilScore = 'CIBIL score must be between 300 and 900';
+        }
+      }
+
+      if (formData.companyName && formData.companyName.trim().length < 2) {
+        newErrors.companyName = 'Company name must be at least 2 characters';
+      }
+
+      if (formData.primaryBank && formData.primaryBank.trim().length < 2) {
+        newErrors.primaryBank = 'Primary bank name must be at least 2 characters';
+      }
+    }
+
+    if (step === 3) {
+      if (!formData.aadharNumber.trim()) {
+        newErrors.aadharNumber = 'Aadhar number is required';
+      } else if (!aadharRegex.test(formData.aadharNumber)) {
+        newErrors.aadharNumber = 'Aadhar number must be exactly 12 digits';
+      }
+
+      if (!formData.panNumber.trim()) {
+        newErrors.panNumber = 'PAN number is required';
+      } else if (!panRegex.test(formData.panNumber)) {
+        newErrors.panNumber = 'PAN format must be AAAAA0000A';
+      }
+
+      if (!formData.nomineeName.trim()) {
+        newErrors.nomineeName = 'Nominee name is required';
+      } else if (!nameRegex.test(formData.nomineeName.trim())) {
+        newErrors.nomineeName = 'Nominee name can contain only letters and spaces';
+      }
+
+      if (formData.nomineeRelation && !nameRegex.test(formData.nomineeRelation.trim())) {
+        newErrors.nomineeRelation = 'Relation can contain only letters and spaces';
+      }
+    }
+
+    if (step === 5) {
+      const cardNumber = formData.cardNumber.replace(/\s/g, '');
+
+      if (!formData.paymentMethod) {
+        newErrors.paymentMethod = 'Payment method is required';
+      }
+
+      if (!cardNumber) {
+        newErrors.cardNumber = 'Card number is required';
+      } else if (!/^\d{16}$/.test(cardNumber)) {
+        newErrors.cardNumber = 'Card number must be exactly 16 digits';
+      }
+
+      if (!formData.expiryDate.trim()) {
+        newErrors.expiryDate = 'Expiry date is required';
+      } else if (!isValidExpiry(formData.expiryDate)) {
+        newErrors.expiryDate = 'Expiry date must be in MM/YY format';
+      }
+
+      if (!formData.cvv.trim()) {
+        newErrors.cvv = 'CVV is required';
+      } else if (!/^\d{3,4}$/.test(formData.cvv)) {
+        newErrors.cvv = 'CVV must be 3 or 4 digits';
+      }
     }
 
     setErrors(newErrors);
@@ -156,41 +357,53 @@ export default function NewLoanApplicationScreen() {
   };
 
   const handleNext = () => {
-    if (validateStep(currentStep)) {
-      if (currentStep < 5) {
-        setCurrentStep((currentStep + 1) as Step);
-      }
+    const isValid = validateStep(currentStep);
+
+    if (!isValid) {
+      Alert.alert('Validation Error', 'Please correct the highlighted fields before continuing.');
+      return;
+    }
+
+    if (currentStep < 5) {
+      setCurrentStep((prev) => (prev + 1) as Step);
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > 1) {
-      setCurrentStep((currentStep - 1) as Step);
+      setCurrentStep((prev) => (prev - 1) as Step);
     }
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(5)) {
+    const isStep1Valid = validateStep(1);
+    const isStep2Valid = validateStep(2);
+    const isStep3Valid = validateStep(3);
+    const isStep5Valid = validateStep(5);
+
+    if (!isStep1Valid || !isStep2Valid || !isStep3Valid || !isStep5Valid) {
+      Alert.alert('Data entered in wrong Format', 'Please enter the data in correct format in the highlighted fields.');
       return;
     }
 
     setIsSubmitting(true);
+
     try {
       const applicationData: loanService.LoanApplicationData = {
-        fullName: formData.fullName,
-        email: formData.email,
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim().toLowerCase(),
         phone: formData.phone,
         dob: formData.dob || undefined,
         gender: formData.gender || undefined,
-        address: formData.address,
-        city: formData.city,
+        address: formData.address.trim(),
+        city: formData.city.trim(),
         pincode: formData.pincode,
         loanType: formData.loanType,
         loanAmount: parseFloat(formData.loanAmount),
-        companyName: formData.companyName || undefined,
+        companyName: formData.companyName.trim() || undefined,
         monthlyIncome: formData.monthlyIncome ? parseFloat(formData.monthlyIncome) : undefined,
         existingEmi: formData.existingEmi ? parseFloat(formData.existingEmi) : undefined,
-        primaryBank: formData.primaryBank || undefined,
+        primaryBank: formData.primaryBank.trim() || undefined,
         cibilScore: formData.cibilScore || undefined,
         bankStatementPdf: formData.bankStatementPdf || undefined,
         aadharNumber: formData.aadharNumber,
@@ -200,8 +413,8 @@ export default function NewLoanApplicationScreen() {
         aadharPdf: formData.aadharPdf || undefined,
         panCardImage: formData.panCardImage || undefined,
         panCardPdf: formData.panCardPdf || undefined,
-        nomineeName: formData.nomineeName,
-        nomineeRelation: formData.nomineeRelation || undefined,
+        nomineeName: formData.nomineeName.trim(),
+        nomineeRelation: formData.nomineeRelation.trim() || undefined,
         paymentMethod: formData.paymentMethod,
         cardNumber: formData.cardNumber.replace(/\s/g, ''),
         expiryDate: formData.expiryDate,
@@ -210,18 +423,14 @@ export default function NewLoanApplicationScreen() {
 
       await loanService.createLoanApplication(applicationData);
 
-      Alert.alert(
-        'Success',
-        'Loan application submitted successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              router.replace('/(tabs)/profile');
-            },
+      Alert.alert('Success', 'Loan application submitted successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            router.replace('/(tabs)/profile');
           },
-        ]
-      );
+        },
+      ]);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to submit application');
     } finally {
@@ -273,19 +482,20 @@ export default function NewLoanApplicationScreen() {
           value={formData.fullName}
           onChangeText={(value) => handleInputChange('fullName', value)}
         />
-        {errors.fullName && <Text style={styles.errorMessage}>{errors.fullName}</Text>}
+        {errors.fullName ? <Text style={styles.errorMessage}>{errors.fullName}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Email *</Text>
         <TextInput
           style={[styles.input, errors.email && styles.inputError]}
-          placeholder="Enter email"
+          placeholder="Enter your email"
           keyboardType="email-address"
+          autoCapitalize="none"
           value={formData.email}
           onChangeText={(value) => handleInputChange('email', value)}
         />
-        {errors.email && <Text style={styles.errorMessage}>{errors.email}</Text>}
+        {errors.email ? <Text style={styles.errorMessage}>{errors.email}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
@@ -296,28 +506,38 @@ export default function NewLoanApplicationScreen() {
           keyboardType="phone-pad"
           value={formData.phone}
           onChangeText={(value) => handleInputChange('phone', value)}
+          maxLength={10}
         />
-        {errors.phone && <Text style={styles.errorMessage}>{errors.phone}</Text>}
+        {errors.phone ? <Text style={styles.errorMessage}>{errors.phone}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Date of Birth (YYYY-MM-DD)</Text>
+        <Text style={styles.label}>Date of Birth(YYYY-MM-DD)</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.dob && styles.inputError]}
           placeholder="YYYY-MM-DD"
           value={formData.dob}
           onChangeText={(value) => handleInputChange('dob', value)}
+          maxLength={10}
         />
+        {errors.dob ? <Text style={styles.errorMessage}>{errors.dob}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Gender</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="M/F/Other"
-          value={formData.gender}
-          onChangeText={(value) => handleInputChange('gender', value)}
-        />
+        <View style={[styles.input, styles.pickerContainer, errors.gender && styles.inputError]}>
+          <Picker
+            selectedValue={formData.gender}
+            onValueChange={(value) => handleInputChange('gender', value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Select Gender" value="" />
+            <Picker.Item label="Male" value="Male" />
+            <Picker.Item label="Female" value="Female" />
+            <Picker.Item label="Other" value="Other" />
+          </Picker>
+        </View>
+        {errors.gender ? <Text style={styles.errorMessage}>{errors.gender}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
@@ -330,7 +550,7 @@ export default function NewLoanApplicationScreen() {
           value={formData.address}
           onChangeText={(value) => handleInputChange('address', value)}
         />
-        {errors.address && <Text style={styles.errorMessage}>{errors.address}</Text>}
+        {errors.address ? <Text style={styles.errorMessage}>{errors.address}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
@@ -341,7 +561,7 @@ export default function NewLoanApplicationScreen() {
           value={formData.city}
           onChangeText={(value) => handleInputChange('city', value)}
         />
-        {errors.city && <Text style={styles.errorMessage}>{errors.city}</Text>}
+        {errors.city ? <Text style={styles.errorMessage}>{errors.city}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
@@ -352,8 +572,9 @@ export default function NewLoanApplicationScreen() {
           keyboardType="number-pad"
           value={formData.pincode}
           onChangeText={(value) => handleInputChange('pincode', value)}
+          maxLength={6}
         />
-        {errors.pincode && <Text style={styles.errorMessage}>{errors.pincode}</Text>}
+        {errors.pincode ? <Text style={styles.errorMessage}>{errors.pincode}</Text> : null}
       </View>
     </View>
   );
@@ -375,7 +596,7 @@ export default function NewLoanApplicationScreen() {
             ))}
           </Picker>
         </View>
-        {errors.loanType && <Text style={styles.errorMessage}>{errors.loanType}</Text>}
+        {errors.loanType ? <Text style={styles.errorMessage}>{errors.loanType}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
@@ -387,60 +608,66 @@ export default function NewLoanApplicationScreen() {
           value={formData.loanAmount}
           onChangeText={(value) => handleInputChange('loanAmount', value)}
         />
-        {errors.loanAmount && <Text style={styles.errorMessage}>{errors.loanAmount}</Text>}
+        {errors.loanAmount ? <Text style={styles.errorMessage}>{errors.loanAmount}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Company Name</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.companyName && styles.inputError]}
           placeholder="Company name (for business loans)"
           value={formData.companyName}
           onChangeText={(value) => handleInputChange('companyName', value)}
         />
+        {errors.companyName ? <Text style={styles.errorMessage}>{errors.companyName}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Monthly Income (₹)</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.monthlyIncome && styles.inputError]}
           placeholder="Enter monthly income"
           keyboardType="decimal-pad"
           value={formData.monthlyIncome}
           onChangeText={(value) => handleInputChange('monthlyIncome', value)}
         />
+        {errors.monthlyIncome ? <Text style={styles.errorMessage}>{errors.monthlyIncome}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Existing EMI (₹)</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.existingEmi && styles.inputError]}
           placeholder="Total existing EMI"
           keyboardType="decimal-pad"
           value={formData.existingEmi}
           onChangeText={(value) => handleInputChange('existingEmi', value)}
         />
+        {errors.existingEmi ? <Text style={styles.errorMessage}>{errors.existingEmi}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Primary Bank</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.primaryBank && styles.inputError]}
           placeholder="Your primary bank"
           value={formData.primaryBank}
           onChangeText={(value) => handleInputChange('primaryBank', value)}
         />
+        {errors.primaryBank ? <Text style={styles.errorMessage}>{errors.primaryBank}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>CIBIL Score</Text>
         <TextInput
-          style={styles.input}
-          placeholder="Your CIBIL score"
+          style={[styles.input, errors.cibilScore && styles.inputError]}
+          placeholder="300 - 900"
           keyboardType="number-pad"
           value={formData.cibilScore}
           onChangeText={(value) => handleInputChange('cibilScore', value)}
+          maxLength={3}
         />
+        {errors.cibilScore ? <Text style={styles.errorMessage}>{errors.cibilScore}</Text> : null}
       </View>
     </View>
   );
@@ -457,42 +684,27 @@ export default function NewLoanApplicationScreen() {
           keyboardType="number-pad"
           value={formData.aadharNumber}
           onChangeText={(value) => handleInputChange('aadharNumber', value)}
+          maxLength={12}
         />
-        {errors.aadharNumber && <Text style={styles.errorMessage}>{errors.aadharNumber}</Text>}
+        {errors.aadharNumber ? <Text style={styles.errorMessage}>{errors.aadharNumber}</Text> : null}
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Aadhar PDF (Filename or URL)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g., aadhar.pdf or file path"
-          value={formData.aadharPdf}
-          onChangeText={(value) => handleInputChange('aadharPdf', value)}
-        />
-        <Text style={styles.helperText}>Upload PDF file or provide file reference</Text>
-      </View>
+      
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>PAN Number *</Text>
         <TextInput
           style={[styles.input, errors.panNumber && styles.inputError]}
           placeholder="PAN format: AAAAA0000A"
-          value={formData.panNumber.toUpperCase()}
-          onChangeText={(value) => handleInputChange('panNumber', value.toUpperCase())}
+          autoCapitalize="characters"
+          value={formData.panNumber}
+          onChangeText={(value) => handleInputChange('panNumber', value)}
+          maxLength={10}
         />
-        {errors.panNumber && <Text style={styles.errorMessage}>{errors.panNumber}</Text>}
+        {errors.panNumber ? <Text style={styles.errorMessage}>{errors.panNumber}</Text> : null}
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>PAN PDF (Filename or URL)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g., pan.pdf or file path"
-          value={formData.panCardPdf}
-          onChangeText={(value) => handleInputChange('panCardPdf', value)}
-        />
-        <Text style={styles.helperText}>Upload PDF file or provide file reference</Text>
-      </View>
+      
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Nominee Name *</Text>
@@ -502,24 +714,18 @@ export default function NewLoanApplicationScreen() {
           value={formData.nomineeName}
           onChangeText={(value) => handleInputChange('nomineeName', value)}
         />
-        {errors.nomineeName && <Text style={styles.errorMessage}>{errors.nomineeName}</Text>}
+        {errors.nomineeName ? <Text style={styles.errorMessage}>{errors.nomineeName}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Relation with Nominee</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.nomineeRelation && styles.inputError]}
           placeholder="e.g., Spouse, Parent, etc."
           value={formData.nomineeRelation}
           onChangeText={(value) => handleInputChange('nomineeRelation', value)}
         />
-      </View>
-
-      <View style={styles.noteContainer}>
-        <Text style={styles.noteTitle}>📄 Document Upload</Text>
-        <Text style={styles.noteText}>
-          Please have scanned/photographed copies of Aadhar, PAN, and bank statements ready. You can upload them here or provide file references.
-        </Text>
+        {errors.nomineeRelation ? <Text style={styles.errorMessage}>{errors.nomineeRelation}</Text> : null}
       </View>
     </View>
   );
@@ -527,12 +733,14 @@ export default function NewLoanApplicationScreen() {
   const renderStep4 = () => (
     <View>
       <Text style={styles.stepTitle}>Review & Confirm</Text>
-      
+
       <View style={styles.reviewSection}>
         <Text style={styles.reviewSectionTitle}>Personal Details</Text>
         <ReviewRow label="Name" value={formData.fullName} />
         <ReviewRow label="Email" value={formData.email} />
         <ReviewRow label="Phone" value={formData.phone} />
+        <ReviewRow label="DOB" value={formData.dob || '-'} />
+        <ReviewRow label="Gender" value={formData.gender || '-'} />
         <ReviewRow label="Address" value={formData.address} />
         <ReviewRow label="City, Pincode" value={`${formData.city}, ${formData.pincode}`} />
       </View>
@@ -540,21 +748,28 @@ export default function NewLoanApplicationScreen() {
       <View style={styles.reviewSection}>
         <Text style={styles.reviewSectionTitle}>Loan Details</Text>
         <ReviewRow label="Loan Type" value={formData.loanType} />
-        <ReviewRow label="Loan Amount" value={`₹${formData.loanAmount}`} />
-        {formData.monthlyIncome && <ReviewRow label="Monthly Income" value={`₹${formData.monthlyIncome}`} />}
-        {formData.existingEmi && <ReviewRow label="Existing EMI" value={`₹${formData.existingEmi}`} />}
+        <ReviewRow label="Loan Amount" value={`₹${formData.loanAmount || '-'}`} />
+        {formData.companyName ? <ReviewRow label="Company Name" value={formData.companyName} /> : null}
+        {formData.monthlyIncome ? <ReviewRow label="Monthly Income" value={`₹${formData.monthlyIncome}`} /> : null}
+        {formData.existingEmi ? <ReviewRow label="Existing EMI" value={`₹${formData.existingEmi}`} /> : null}
+        {formData.primaryBank ? <ReviewRow label="Primary Bank" value={formData.primaryBank} /> : null}
+        {formData.cibilScore ? <ReviewRow label="CIBIL Score" value={formData.cibilScore} /> : null}
       </View>
 
       <View style={styles.reviewSection}>
         <Text style={styles.reviewSectionTitle}>KYC Details</Text>
-        <ReviewRow label="Aadhar" value={`****${formData.aadharNumber.slice(-4)}`} />
-        <ReviewRow label="PAN" value={formData.panNumber} />
-        <ReviewRow label="Nominee" value={formData.nomineeName} />
+        <ReviewRow
+          label="Aadhar"
+          value={formData.aadharNumber ? `********${formData.aadharNumber.slice(-4)}` : '-'}
+        />
+        <ReviewRow label="PAN" value={formData.panNumber || '-'} />
+        <ReviewRow label="Nominee" value={formData.nomineeName || '-'} />
+        <ReviewRow label="Relation" value={formData.nomineeRelation || '-'} />
       </View>
 
       <View style={styles.agreeContainer}>
         <Text style={styles.agreeText}>
-          ✓ I confirm that all the information provided is true and accurate.
+           I confirm that all the information provided is true and accurate.
         </Text>
       </View>
     </View>
@@ -572,11 +787,12 @@ export default function NewLoanApplicationScreen() {
             onValueChange={(value) => handleInputChange('paymentMethod', value)}
             style={styles.picker}
           >
-            <Picker.Item label="Credit Card" value="Credit Card" />
-            <Picker.Item label="Debit Card" value="Debit Card" />
+            {PAYMENT_METHODS.map((method) => (
+              <Picker.Item key={method} label={method} value={method} />
+            ))}
           </Picker>
         </View>
-        {errors.paymentMethod && <Text style={styles.errorMessage}>{errors.paymentMethod}</Text>}
+        {errors.paymentMethod ? <Text style={styles.errorMessage}>{errors.paymentMethod}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
@@ -586,14 +802,10 @@ export default function NewLoanApplicationScreen() {
           placeholder="16-digit card number"
           keyboardType="number-pad"
           value={formData.cardNumber}
-          onChangeText={(value) => {
-            // Format with spaces for readability
-            const formatted = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
-            handleInputChange('cardNumber', formatted);
-          }}
+          onChangeText={(value) => handleInputChange('cardNumber', value)}
           maxLength={19}
         />
-        {errors.cardNumber && <Text style={styles.errorMessage}>{errors.cardNumber}</Text>}
+        {errors.cardNumber ? <Text style={styles.errorMessage}>{errors.cardNumber}</Text> : null}
       </View>
 
       <View style={styles.row}>
@@ -604,17 +816,10 @@ export default function NewLoanApplicationScreen() {
             placeholder="MM/YY"
             keyboardType="number-pad"
             value={formData.expiryDate}
-            onChangeText={(value) => {
-              // Auto-format as MM/YY
-              let formatted = value.replace(/\D/g, '');
-              if (formatted.length >= 2) {
-                formatted = formatted.slice(0, 2) + '/' + formatted.slice(2, 4);
-              }
-              handleInputChange('expiryDate', formatted);
-            }}
+            onChangeText={(value) => handleInputChange('expiryDate', value)}
             maxLength={5}
           />
-          {errors.expiryDate && <Text style={styles.errorMessage}>{errors.expiryDate}</Text>}
+          {errors.expiryDate ? <Text style={styles.errorMessage}>{errors.expiryDate}</Text> : null}
         </View>
 
         <View style={[styles.inputGroup, { flex: 1 }]}>
@@ -625,15 +830,15 @@ export default function NewLoanApplicationScreen() {
             keyboardType="number-pad"
             secureTextEntry
             value={formData.cvv}
-            onChangeText={(value) => handleInputChange('cvv', value.replace(/\D/g, ''))}
+            onChangeText={(value) => handleInputChange('cvv', value)}
             maxLength={4}
           />
-          {errors.cvv && <Text style={styles.errorMessage}>{errors.cvv}</Text>}
+          {errors.cvv ? <Text style={styles.errorMessage}>{errors.cvv}</Text> : null}
         </View>
       </View>
 
       <View style={styles.securityContainer}>
-        <Text style={styles.securityTitle}>🔒 Secure Payment</Text>
+        <Text style={styles.securityTitle}>Secure Payment</Text>
         <Text style={styles.securityText}>
           Your payment information is encrypted and secure. We never store your full card details.
         </Text>
@@ -641,7 +846,7 @@ export default function NewLoanApplicationScreen() {
 
       <View style={styles.termsContainer}>
         <Text style={styles.termsText}>
-          ✓ By clicking Submit, you agree to provide your card details for loan processing. Your information will be kept confidential and secure.
+           By clicking Submit, you agree to provide your card details for loan processing. Your information will be kept confidential and secure.
         </Text>
       </View>
     </View>
@@ -658,16 +863,14 @@ export default function NewLoanApplicationScreen() {
         contentContainerStyle={styles.contentContainer}
       >
         {renderStepIndicator()}
-        
+
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
         {currentStep === 4 && renderStep4()}
         {currentStep === 5 && renderStep5()}
-        {currentStep === 5 && renderStep5()}
       </ScrollView>
 
-      {/* Navigation Buttons */}
       <View style={styles.navigationContainer}>
         {currentStep > 1 && (
           <TouchableOpacity
@@ -851,16 +1054,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
+    gap: 12,
   },
   reviewLabel: {
     fontSize: 12,
     color: Colors.textSecondary,
     fontWeight: '500',
+    flex: 1,
   },
   reviewValue: {
     fontSize: 12,
     color: Colors.textPrimary,
     fontWeight: '600',
+    flex: 1,
+    textAlign: 'right',
   },
   agreeContainer: {
     backgroundColor: '#F0FFF4',
