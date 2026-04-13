@@ -1,10 +1,3 @@
-/**
- * Auth Store (using React Context + Hooks)
- * Centralized authentication state management
- * 
- * Can be easily migrated to Zustand by installing: npm install zustand
- */
-
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import * as authService from '../services/auth.service';
 import * as tokenStorage from '../utils/storage';
@@ -99,10 +92,6 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
-/**
- * Auth Provider Component
- * Wrap your app with this to provide auth context
- */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 

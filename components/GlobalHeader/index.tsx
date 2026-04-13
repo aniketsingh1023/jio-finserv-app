@@ -4,36 +4,45 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
+import { useAuth } from '@/store/authStore'; 
 
 /**
  * Global Header Component
- * Displays app logo and Get Started CTA
- * Used across all screens
  */
 export const GlobalHeader: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const handleGetStarted = () => {
-    router.push('/auth/login');
+
+  const { user } = useAuth();
+
+  const handlePress = () => {
+    if (user) {
+      router.push('/applications/new'); // Apply flow
+    } else {
+      router.push('/auth/login'); // Login screen
+    }
   };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <View style={styles.content}>
         <Text style={styles.logo}>Jio Finserv</Text>
+
         <TouchableOpacity
-          style={styles.getStartedButton}
-          onPress={handleGetStarted}
+          style={styles.button}
+          onPress={handlePress}
           activeOpacity={0.7}
         >
-          <Text style={styles.getStartedText}>Get Started</Text>
+          <Text style={styles.buttonText}>
+            {user ? 'Apply Now' : 'Sign in'}
+          </Text>
         </TouchableOpacity>
+
       </View>
     </View>
   );
@@ -46,7 +55,6 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    // paddingTop is set dynamically via insets
   },
   content: {
     flexDirection: 'row',
@@ -59,13 +67,13 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     letterSpacing: 0.5,
   },
-  getStartedButton: {
+  button: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     backgroundColor: Colors.primary,
     borderRadius: 8,
   },
-  getStartedText: {
+  buttonText: {
     color: Colors.white,
     fontSize: 12,
     fontWeight: '600',
