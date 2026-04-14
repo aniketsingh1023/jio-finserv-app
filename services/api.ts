@@ -2,8 +2,9 @@ import axios from "axios";
 import * as tokenStorage from "../utils/storage";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-
+console.log("API URL:", process.env.EXPO_PUBLIC_API_URL);
 console.log("EXPO_PUBLIC_API_URL:", BASE_URL);
+
 
 if (!BASE_URL) {
   throw new Error("EXPO_PUBLIC_API_URL is not defined");
