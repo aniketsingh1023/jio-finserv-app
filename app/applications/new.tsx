@@ -15,9 +15,15 @@ import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/store/authStore';
 import * as loanService from '@/services/loan.service';
+import * as filePicker from '@/utils/file-picker';
 import { Colors } from '@/constants/colors';
 
 type Step = 1 | 2 | 3 | 4 | 5;
+
+interface PickedPDFFile {
+  uri: string;
+  name: string;
+}
 
 interface FormData {
   fullName: string;
@@ -83,12 +89,28 @@ const isValidDateString = (value: string) => {
 
 const isValidExpiry = (value: string) => /^(0[1-9]|1[0-2])\/\d{2}$/.test(value);
 
+const normalizeFileUri = (uri: string) => {
+  if (Platform.OS === 'ios') {
+    return uri.replace('file://', '');
+  }
+  return uri;
+};
+
+const buildPdfFile = (file: PickedPDFFile) => ({
+  uri: normalizeFileUri(file.uri),
+  name: file.name?.endsWith('.pdf') ? file.name : `${file.name || 'document'}.pdf`,
+  type: 'application/pdf',
+});
+
 export default function NewLoanApplicationScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [aadharPdfFile, setAadharPdfFile] = useState<PickedPDFFile | null>(null);
+  const [panCardPdfFile, setPanCardPdfFile] = useState<PickedPDFFile | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     fullName: user?.name || '',
@@ -309,10 +331,18 @@ export default function NewLoanApplicationScreen() {
         newErrors.aadharNumber = 'Aadhar number must be exactly 12 digits';
       }
 
+      if (!aadharPdfFile) {
+        newErrors.aadharPdf = 'Aadhar PDF is required';
+      }
+
       if (!formData.panNumber.trim()) {
         newErrors.panNumber = 'PAN number is required';
       } else if (!panRegex.test(formData.panNumber)) {
         newErrors.panNumber = 'PAN format must be AAAAA0000A';
+      }
+
+      if (!panCardPdfFile) {
+        newErrors.panCardPdf = 'PAN Card PDF is required';
       }
 
       if (!formData.nomineeName.trim()) {
@@ -360,7 +390,7 @@ export default function NewLoanApplicationScreen() {
     const isValid = validateStep(currentStep);
 
     if (!isValid) {
-      Alert.alert('Validation Error', 'Please correct the highlighted fields before continuing.');
+      Alert.alert('Error', 'Please correct the highlighted fields data to continue.');
       return;
     }
 
@@ -375,6 +405,38 @@ export default function NewLoanApplicationScreen() {
     }
   };
 
+  const handlePickAadharPdf = async () => {
+    try {
+      const pickedFile = await filePicker.pickPDFFile();
+      if (pickedFile) {
+        setAadharPdfFile({
+          uri: pickedFile.uri,
+          name: pickedFile.name || 'aadhar.pdf',
+        });
+        setErrors((prev) => ({ ...prev, aadharPdf: '' }));
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick Aadhar PDF file');
+      console.error(error);
+    }
+  };
+
+  const handlePickPanCardPdf = async () => {
+    try {
+      const pickedFile = await filePicker.pickPDFFile();
+      if (pickedFile) {
+        setPanCardPdfFile({
+          uri: pickedFile.uri,
+          name: pickedFile.name || 'pan.pdf',
+        });
+        setErrors((prev) => ({ ...prev, panCardPdf: '' }));
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick PAN Card PDF file');
+      console.error(error);
+    }
+  };
+
   const handleSubmit = async () => {
     const isStep1Valid = validateStep(1);
     const isStep2Valid = validateStep(2);
@@ -382,46 +444,88 @@ export default function NewLoanApplicationScreen() {
     const isStep5Valid = validateStep(5);
 
     if (!isStep1Valid || !isStep2Valid || !isStep3Valid || !isStep5Valid) {
-      Alert.alert('Data entered in wrong Format', 'Please enter the data in correct format in the highlighted fields.');
+      Alert.alert(
+        'Data entered in wrong Format',
+        'Please enter the data in correct format in the highlighted fields.'
+      );
+      return;
+    }
+
+    if (!aadharPdfFile || !panCardPdfFile) {
+      Alert.alert('Missing Documents', 'Please upload both Aadhar PDF and PAN Card PDF.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const applicationData: loanService.LoanApplicationData = {
-        fullName: formData.fullName.trim(),
-        email: formData.email.trim().toLowerCase(),
-        phone: formData.phone,
-        dob: formData.dob || undefined,
-        gender: formData.gender || undefined,
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        pincode: formData.pincode,
-        loanType: formData.loanType,
-        loanAmount: parseFloat(formData.loanAmount),
-        companyName: formData.companyName.trim() || undefined,
-        monthlyIncome: formData.monthlyIncome ? parseFloat(formData.monthlyIncome) : undefined,
-        existingEmi: formData.existingEmi ? parseFloat(formData.existingEmi) : undefined,
-        primaryBank: formData.primaryBank.trim() || undefined,
-        cibilScore: formData.cibilScore || undefined,
-        bankStatementPdf: formData.bankStatementPdf || undefined,
-        aadharNumber: formData.aadharNumber,
-        panNumber: formData.panNumber,
-        aadharFrontImage: formData.aadharFrontImage || undefined,
-        aadharBackImage: formData.aadharBackImage || undefined,
-        aadharPdf: formData.aadharPdf || undefined,
-        panCardImage: formData.panCardImage || undefined,
-        panCardPdf: formData.panCardPdf || undefined,
-        nomineeName: formData.nomineeName.trim(),
-        nomineeRelation: formData.nomineeRelation.trim() || undefined,
-        paymentMethod: formData.paymentMethod,
-        cardNumber: formData.cardNumber.replace(/\s/g, ''),
-        expiryDate: formData.expiryDate,
-        cvv: formData.cvv,
-      };
+      const formDataToSend = new FormData();
 
-      await loanService.createLoanApplication(applicationData);
+      formDataToSend.append('fullName', formData.fullName.trim());
+      formDataToSend.append('email', formData.email.trim().toLowerCase());
+      formDataToSend.append('phone', formData.phone);
+      if (formData.dob) formDataToSend.append('dob', formData.dob);
+      if (formData.gender) formDataToSend.append('gender', formData.gender);
+      formDataToSend.append('address', formData.address.trim());
+      formDataToSend.append('city', formData.city.trim());
+      formDataToSend.append('pincode', formData.pincode);
+      formDataToSend.append('loanType', formData.loanType);
+      formDataToSend.append('loanAmount', formData.loanAmount);
+
+      if (formData.companyName.trim()) {
+        formDataToSend.append('companyName', formData.companyName.trim());
+      }
+
+      if (formData.monthlyIncome) {
+        formDataToSend.append('monthlyIncome', formData.monthlyIncome);
+      }
+
+      if (formData.existingEmi) {
+        formDataToSend.append('existingEmi', formData.existingEmi);
+      }
+
+      if (formData.primaryBank.trim()) {
+        formDataToSend.append('primaryBank', formData.primaryBank.trim());
+      }
+
+      if (formData.cibilScore) {
+        formDataToSend.append('cibilScore', formData.cibilScore);
+      }
+
+      if (formData.bankStatementPdf) {
+        formDataToSend.append('bankStatementPdf', formData.bankStatementPdf);
+      }
+
+      formDataToSend.append('aadharNumber', formData.aadharNumber);
+      formDataToSend.append('panNumber', formData.panNumber);
+
+      if (formData.aadharFrontImage) {
+        formDataToSend.append('aadharFrontImage', formData.aadharFrontImage);
+      }
+
+      if (formData.aadharBackImage) {
+        formDataToSend.append('aadharBackImage', formData.aadharBackImage);
+      }
+
+      if (formData.panCardImage) {
+        formDataToSend.append('panCardImage', formData.panCardImage);
+      }
+
+      formDataToSend.append('nomineeName', formData.nomineeName.trim());
+
+      if (formData.nomineeRelation.trim()) {
+        formDataToSend.append('nomineeRelation', formData.nomineeRelation.trim());
+      }
+
+      formDataToSend.append('paymentMethod', formData.paymentMethod);
+      formDataToSend.append('cardNumber', formData.cardNumber.replace(/\s/g, ''));
+      formDataToSend.append('expiryDate', formData.expiryDate);
+      formDataToSend.append('cvv', formData.cvv);
+
+      formDataToSend.append('aadhar', buildPdfFile(aadharPdfFile) as any);
+      formDataToSend.append('pan', buildPdfFile(panCardPdfFile) as any);
+
+      await loanService.createLoanApplication(formDataToSend);
 
       Alert.alert('Success', 'Loan application submitted successfully!', [
         {
@@ -432,6 +536,7 @@ export default function NewLoanApplicationScreen() {
         },
       ]);
     } catch (error: any) {
+      console.error('Loan submission failed:', error);
       Alert.alert('Error', error.message || 'Failed to submit application');
     } finally {
       setIsSubmitting(false);
@@ -689,7 +794,25 @@ export default function NewLoanApplicationScreen() {
         {errors.aadharNumber ? <Text style={styles.errorMessage}>{errors.aadharNumber}</Text> : null}
       </View>
 
-      
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Aadhar PDF *</Text>
+        <TouchableOpacity
+          style={[
+            styles.filePickerButton,
+            styles.filePickerInput,
+            errors.aadharPdf && styles.inputError,
+          ]}
+          onPress={handlePickAadharPdf}
+        >
+          <Text style={styles.filePickerButtonText}>
+            {aadharPdfFile ? `✓ ${aadharPdfFile.name}` : 'Pick Aadhar PDF'}
+          </Text>
+        </TouchableOpacity>
+        {aadharPdfFile && (
+          <Text style={styles.fileSelectedText}>File selected: {aadharPdfFile.name}</Text>
+        )}
+        {errors.aadharPdf ? <Text style={styles.errorMessage}>{errors.aadharPdf}</Text> : null}
+      </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>PAN Number *</Text>
@@ -704,7 +827,25 @@ export default function NewLoanApplicationScreen() {
         {errors.panNumber ? <Text style={styles.errorMessage}>{errors.panNumber}</Text> : null}
       </View>
 
-      
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>PAN Card PDF *</Text>
+        <TouchableOpacity
+          style={[
+            styles.filePickerButton,
+            styles.filePickerInput,
+            errors.panCardPdf && styles.inputError,
+          ]}
+          onPress={handlePickPanCardPdf}
+        >
+          <Text style={styles.filePickerButtonText}>
+            {panCardPdfFile ? `✓ ${panCardPdfFile.name}` : 'Pick PAN Card PDF'}
+          </Text>
+        </TouchableOpacity>
+        {panCardPdfFile && (
+          <Text style={styles.fileSelectedText}>File selected: {panCardPdfFile.name}</Text>
+        )}
+        {errors.panCardPdf ? <Text style={styles.errorMessage}>{errors.panCardPdf}</Text> : null}
+      </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Nominee Name *</Text>
@@ -762,14 +903,16 @@ export default function NewLoanApplicationScreen() {
           label="Aadhar"
           value={formData.aadharNumber ? `********${formData.aadharNumber.slice(-4)}` : '-'}
         />
+        <ReviewRow label="Aadhar PDF" value={aadharPdfFile?.name || '-'} />
         <ReviewRow label="PAN" value={formData.panNumber || '-'} />
+        <ReviewRow label="PAN PDF" value={panCardPdfFile?.name || '-'} />
         <ReviewRow label="Nominee" value={formData.nomineeName || '-'} />
         <ReviewRow label="Relation" value={formData.nomineeRelation || '-'} />
       </View>
 
       <View style={styles.agreeContainer}>
         <Text style={styles.agreeText}>
-           I confirm that all the information provided is true and accurate.
+          I confirm that all the information provided is true and accurate.
         </Text>
       </View>
     </View>
@@ -846,7 +989,7 @@ export default function NewLoanApplicationScreen() {
 
       <View style={styles.termsContainer}>
         <Text style={styles.termsText}>
-           By clicking Submit, you agree to provide your card details for loan processing. Your information will be kept confidential and secure.
+          By clicking Submit, you agree to provide your card details for loan processing. Your information will be kept confidential and secure.
         </Text>
       </View>
     </View>
@@ -1016,25 +1159,6 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     marginTop: 4,
   },
-  noteContainer: {
-    backgroundColor: '#F0F9FF',
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
-    padding: 12,
-    borderRadius: 6,
-    marginVertical: 16,
-  },
-  noteTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 6,
-  },
-  noteText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    lineHeight: 18,
-  },
   reviewSection: {
     backgroundColor: Colors.white,
     borderRadius: 8,
@@ -1129,12 +1253,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  helperText: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
   securityContainer: {
     backgroundColor: '#F0FFF4',
     borderLeftWidth: 3,
@@ -1166,5 +1284,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#E65100',
     lineHeight: 18,
+  },
+  filePickerButton: {
+    marginVertical: 4,
+  },
+  filePickerInput: {
+    backgroundColor: Colors.white,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderStyle: 'dashed',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filePickerButtonText: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  fileSelectedText: {
+    fontSize: 12,
+    color: '#27AE60',
+    marginTop: 6,
+    fontWeight: '500',
   },
 });

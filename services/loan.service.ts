@@ -1,4 +1,4 @@
-import { post, get } from './api';
+import { post, postFormData, get } from './api';
 
 export interface LoanApplicationData {
   fullName: string;
@@ -53,11 +53,18 @@ export interface LoanApplicationsResponse {
 }
 
 /**
- * Create a new loan application (requires authentication)
+ * Create a new loan application with optional file uploads (requires authentication)
+ * Accepts either FormData (with files) or regular data object
  */
 export const createLoanApplication = async (
-  data: LoanApplicationData
+  data: LoanApplicationData | FormData
 ): Promise<LoanApplicationResponse> => {
+  // Check if data is FormData (has files)
+  if (data instanceof FormData) {
+    return postFormData<LoanApplicationResponse>('/api/loan-applications', data);
+  }
+  
+  // Otherwise, use regular JSON post
   return post<LoanApplicationResponse>('/api/loan-applications', data);
 };
 
