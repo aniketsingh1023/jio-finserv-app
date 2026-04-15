@@ -57,7 +57,7 @@ export const Icon: React.FC<IconProps> = ({
     case 'support':
       return <Feather name="headphones" size={size} color={color} style={style} />;
     case 'leaf':
-      return <Feather name="leaf" size={size} color={color} style={style} />;
+      return <MaterialIcons name="eco" size={size} color={color} style={style} />;
 
     // Action icons
     case 'arrow-right':
