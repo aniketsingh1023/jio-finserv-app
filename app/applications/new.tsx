@@ -17,6 +17,7 @@ import { useAuth } from '@/store/authStore';
 import * as loanService from '@/services/loan.service';
 import * as filePicker from '@/utils/file-picker';
 import { Colors } from '@/constants/colors';
+import { generateAndShareLoanApplicationPdf } from '@/utils/generateLoanApplicationPdf';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -102,12 +103,26 @@ const buildPdfFile = (file: PickedPDFFile) => ({
   type: 'application/pdf',
 });
 
+const formatCurrencyForReview = (value: string) => {
+  if (!value) return '-';
+
+  const numericValue = Number(String(value).replace(/,/g, '').trim());
+  if (Number.isNaN(numericValue)) return value;
+
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(numericValue);
+};
+
 export default function NewLoanApplicationScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const [aadharPdfFile, setAadharPdfFile] = useState<PickedPDFFile | null>(null);
   const [panCardPdfFile, setPanCardPdfFile] = useState<PickedPDFFile | null>(null);
@@ -434,6 +449,56 @@ export default function NewLoanApplicationScreen() {
     } catch (error) {
       Alert.alert('Error', 'Failed to pick PAN Card PDF file');
       console.error(error);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      setIsGeneratingPdf(true);
+
+      await generateAndShareLoanApplicationPdf({
+        applicationNumber: `APP-${Date.now()}`,
+        applicationDate: new Date().toLocaleDateString('en-IN'),
+        lenderName: 'Jio Financial Services Private Limited',
+        platformName: 'https://jiofinserv.org/',
+        step1: {
+          fullName: formData.fullName,
+          phone: formData.phone,
+          email: formData.email,
+          dob: formData.dob,
+          gender: formData.gender,
+          address: formData.address,
+          city: formData.city,
+          pincode: formData.pincode,
+        },
+        step2: {
+          employmentType: formData.loanType,
+          companyName: formData.companyName,
+          monthlyIncome: formData.monthlyIncome,
+          workExperience: '',
+        },
+        step3: {
+          loanType: formData.loanType,
+          loanAmount: formData.loanAmount,
+          tenure: '',
+          interestRate: '',
+          emi: formData.existingEmi,
+          primaryBank: formData.primaryBank,
+          accountNumber: '',
+          ifsc: '',
+          purpose: `${formData.loanType} Loan Application`,
+        },
+        step4: {
+          aadhaar: formData.aadharNumber,
+          pan: formData.panNumber,
+          agreedToTerms: true,
+        },
+      });
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+      Alert.alert('Error', 'Unable to generate PDF right now.');
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -889,10 +954,14 @@ export default function NewLoanApplicationScreen() {
       <View style={styles.reviewSection}>
         <Text style={styles.reviewSectionTitle}>Loan Details</Text>
         <ReviewRow label="Loan Type" value={formData.loanType} />
-        <ReviewRow label="Loan Amount" value={`₹${formData.loanAmount || '-'}`} />
+        <ReviewRow label="Loan Amount" value={formatCurrencyForReview(formData.loanAmount)} />
         {formData.companyName ? <ReviewRow label="Company Name" value={formData.companyName} /> : null}
-        {formData.monthlyIncome ? <ReviewRow label="Monthly Income" value={`₹${formData.monthlyIncome}`} /> : null}
-        {formData.existingEmi ? <ReviewRow label="Existing EMI" value={`₹${formData.existingEmi}`} /> : null}
+        {formData.monthlyIncome ? (
+          <ReviewRow label="Monthly Income" value={formatCurrencyForReview(formData.monthlyIncome)} />
+        ) : null}
+        {formData.existingEmi ? (
+          <ReviewRow label="Existing EMI" value={formatCurrencyForReview(formData.existingEmi)} />
+        ) : null}
         {formData.primaryBank ? <ReviewRow label="Primary Bank" value={formData.primaryBank} /> : null}
         {formData.cibilScore ? <ReviewRow label="CIBIL Score" value={formData.cibilScore} /> : null}
       </View>
@@ -909,6 +978,18 @@ export default function NewLoanApplicationScreen() {
         <ReviewRow label="Nominee" value={formData.nomineeName || '-'} />
         <ReviewRow label="Relation" value={formData.nomineeRelation || '-'} />
       </View>
+
+      <TouchableOpacity
+        style={[styles.downloadButton, isGeneratingPdf && styles.downloadButtonDisabled]}
+        onPress={handleDownloadPdf}
+        disabled={isGeneratingPdf}
+      >
+        {isGeneratingPdf ? (
+          <ActivityIndicator color={Colors.white} />
+        ) : (
+          <Text style={styles.downloadButtonText}>Download PDF</Text>
+        )}
+      </TouchableOpacity>
 
       <View style={styles.agreeContainer}>
         <Text style={styles.agreeText}>
@@ -1019,7 +1100,7 @@ export default function NewLoanApplicationScreen() {
           <TouchableOpacity
             style={[styles.navButton, styles.prevButton]}
             onPress={handlePrevious}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isGeneratingPdf}
           >
             <Text style={styles.prevButtonText}>← Previous</Text>
           </TouchableOpacity>
@@ -1029,7 +1110,7 @@ export default function NewLoanApplicationScreen() {
           <TouchableOpacity
             style={[styles.navButton, styles.nextButton, currentStep === 1 && { flex: 1 }]}
             onPress={handleNext}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isGeneratingPdf}
           >
             <Text style={styles.nextButtonText}>Next →</Text>
           </TouchableOpacity>
@@ -1037,7 +1118,7 @@ export default function NewLoanApplicationScreen() {
           <TouchableOpacity
             style={[styles.navButton, styles.submitButton, currentStep === 5 && { flex: 1 }]}
             onPress={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isGeneratingPdf}
           >
             {isSubmitting ? (
               <ActivityIndicator color={Colors.white} />
@@ -1192,6 +1273,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     textAlign: 'right',
+  },
+  downloadButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  downloadButtonDisabled: {
+    opacity: 0.7,
+  },
+  downloadButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.white,
   },
   agreeContainer: {
     backgroundColor: '#F0FFF4',
