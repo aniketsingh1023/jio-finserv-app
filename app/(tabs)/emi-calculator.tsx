@@ -16,6 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, G } from 'react-native-svg';
 
+// Add Platform import
+import { Platform } from 'react-native';
+
 const { width, height } = Dimensions.get('window');
 
 // Design System Colors
@@ -1080,6 +1083,3 @@ const styles = StyleSheet.create({
     color: DESIGN_COLORS.lightGray,
   },
 });
-
-// Add Platform import
-import { Platform } from 'react-native';

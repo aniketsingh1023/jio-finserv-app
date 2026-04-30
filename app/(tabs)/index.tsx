@@ -1,35 +1,34 @@
 // app/(tabs)/index.tsx
-import React, { useRef, useState, useEffect } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
+  Animated,
+  Dimensions,
+  Easing,
+  FlatList,
+  Image,
+  ImageBackground,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  Dimensions,
-  ImageBackground,
-  FlatList,
-  Animated,
-  Image,
-  Easing,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/colors';
+  View,
+} from "react-native";
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 const DS = {
-  darkNavy: '#1A2235',
-  navyMid: '#253047',
-  warmMustard: '#D58F16',
-  goldenYellow: '#F1B643',
-  softOlive: '#CDC58E',
-  lightGray: '#9BA3B4',
-  surface: '#FFFFFF',
-  background: '#F4F6FB',
-  border: '#ECEEF4',
+  darkNavy: "#1A2235",
+  navyMid: "#253047",
+  warmMustard: "#D58F16",
+  goldenYellow: "#F1B643",
+  softOlive: "#CDC58E",
+  lightGray: "#9BA3B4",
+  surface: "#FFFFFF",
+  background: "#F4F6FB",
+  border: "#ECEEF4",
 
   fontXXL: 38,
   fontXL: 28,
@@ -58,21 +57,21 @@ const DS = {
   radiusXL: 32,
 
   shadowSoft: {
-    shadowColor: '#1A2235',
+    shadowColor: "#1A2235",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.07,
     shadowRadius: 12,
     elevation: 4,
   },
   shadowMedium: {
-    shadowColor: '#1A2235',
+    shadowColor: "#1A2235",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 6,
   },
   shadowGold: {
-    shadowColor: '#D58F16',
+    shadowColor: "#D58F16",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 20,
@@ -120,188 +119,202 @@ interface FAQDataItem {
 
 const whyJioData: WhyJioItem[] = [
   {
-    id: '1',
-    icon: 'flash-outline',
-    title: 'Quick Approval',
-    description: 'Get your loan approved within 24 hours with minimal documentation.',
+    id: "1",
+    icon: "flash-outline",
+    title: "Quick Approval",
+    description:
+      "Get your loan approved within 24 hours with minimal documentation.",
   },
   {
-    id: '2',
-    icon: 'shield-checkmark-outline',
-    title: 'Competitive Rates',
-    description: 'Enjoy interest rates starting from 8.50% p.a. with flexible repayment options.',
+    id: "2",
+    icon: "shield-checkmark-outline",
+    title: "Competitive Rates",
+    description:
+      "Enjoy interest rates starting from 8.50% p.a. with flexible repayment options.",
   },
   {
-    id: '3',
-    icon: 'lock-closed-outline',
-    title: 'Secure Process',
-    description: 'Your data is protected with bank-grade security and encryption.',
+    id: "3",
+    icon: "lock-closed-outline",
+    title: "Secure Process",
+    description:
+      "Your data is protected with bank-grade security and encryption.",
   },
   {
-    id: '4',
-    icon: 'headset-outline',
-    title: 'Expert Support',
-    description: 'Our dedicated team is available 24/7 to assist you with your queries.',
+    id: "4",
+    icon: "headset-outline",
+    title: "Expert Support",
+    description:
+      "Our dedicated team is available 24/7 to assist you with your queries.",
   },
 ];
 
 const loanProductsData: LoanProduct[] = [
   {
-    id: '1',
-    type: 'Personal Loan',
-    description: 'Quick personal loans for all your needs with minimal documentation',
-    icon: 'person-outline',
+    id: "1",
+    type: "Personal Loan",
+    description:
+      "Quick personal loans for all your needs with minimal documentation",
+    icon: "person-outline",
     bgColor: DS.warmMustard,
     accentColor: DS.goldenYellow,
-    route: '/loans/personal',
+    route: "/loans/personal",
   },
   {
-    id: '2',
-    type: 'Home Loan',
-    description: 'Make your dream home a reality with our affordable home loans',
-    icon: 'home-outline',
+    id: "2",
+    type: "Home Loan",
+    description:
+      "Make your dream home a reality with our affordable home loans",
+    icon: "home-outline",
     bgColor: DS.warmMustard,
     accentColor: DS.softOlive,
-    route: '/loans/home',
+    route: "/loans/home",
   },
   {
-    id: '3',
-    type: 'Business Loan',
-    description: 'Fuel your business growth with our flexible business loans',
-    icon: 'business-outline',
+    id: "3",
+    type: "Business Loan",
+    description: "Fuel your business growth with our flexible business loans",
+    icon: "business-outline",
     bgColor: DS.warmMustard,
-    accentColor: '#FFFFFF',
-    route: '/loans/business',
+    accentColor: "#FFFFFF",
+    route: "/loans/business",
   },
   {
-    id: '4',
-    type: 'Loan Against Property',
-    description: 'Unlock the value of your property with our LAP loans',
-    icon: 'car-outline',
+    id: "4",
+    type: "Loan Against Property",
+    description: "Unlock the value of your property with our LAP loans",
+    icon: "car-outline",
     bgColor: DS.warmMustard,
     accentColor: DS.goldenYellow,
-    route: '/loans/loan-property',
+    route: "/loans/loan-property",
   },
   {
-    id: '5',
-    type: 'Education Loan',
-    description: 'Invest in your future with our education financing solutions',
-    icon: 'school-outline',
+    id: "5",
+    type: "Education Loan",
+    description: "Invest in your future with our education financing solutions",
+    icon: "school-outline",
     bgColor: DS.warmMustard,
     accentColor: DS.softOlive,
-    route: '/loans/education',
+    route: "/loans/education",
   },
   {
-    id: '6',
-    type: 'Loan Against Credit Card',
-    description: 'Unlock the value of your credit card with our LACC loans',
-    icon: 'card-outline',
+    id: "6",
+    type: "Loan Against Credit Card",
+    description: "Unlock the value of your credit card with our LACC loans",
+    icon: "card-outline",
     bgColor: DS.warmMustard,
     accentColor: DS.softOlive,
-    route: '/loans/loan-creditcard',
+    route: "/loans/loan-creditcard",
   },
 ];
 
 const testimonialsData: Testimonial[] = [
   {
-    id: '1',
-    name: 'Rajesh Kumar',
-    role: 'Business Owner',
-    image: 'https://randomuser.me/api/portraits/men/32.jpg',
+    id: "1",
+    name: "Rajesh Kumar",
+    role: "Business Owner",
+    image: "https://randomuser.me/api/portraits/men/32.jpg",
     rating: 5,
-    text: 'JioFinserv transformed my business with quick capital. The process was seamless and the interest rates are unbeatable.',
+    text: "JioFinserv transformed my business with quick capital. The process was seamless and the interest rates are unbeatable.",
   },
   {
-    id: '2',
-    name: 'Priya Sharma',
-    role: 'Software Engineer',
-    image: 'https://randomuser.me/api/portraits/women/44.jpg',
+    id: "2",
+    name: "Priya Sharma",
+    role: "Software Engineer",
+    image: "https://randomuser.me/api/portraits/women/44.jpg",
     rating: 5,
-    text: 'Got my home loan approved in just 3 days! The team was professional and guided me through every step.',
+    text: "Got my home loan approved in just 3 days! The team was professional and guided me through every step.",
   },
   {
-    id: '3',
-    name: 'Amit Verma',
-    role: 'Doctor',
-    image: 'https://randomuser.me/api/portraits/men/67.jpg',
+    id: "3",
+    name: "Amit Verma",
+    role: "Doctor",
+    image: "https://randomuser.me/api/portraits/men/67.jpg",
     rating: 5,
-    text: 'Best financial partner for professionals. Their personal loan helped me expand my clinic without any hassle.',
+    text: "Best financial partner for professionals. Their personal loan helped me expand my clinic without any hassle.",
   },
   {
-    id: '4',
-    name: 'Sunita Patel',
-    role: 'Entrepreneur',
-    image: 'https://randomuser.me/api/portraits/women/68.jpg',
+    id: "4",
+    name: "Sunita Patel",
+    role: "Entrepreneur",
+    image: "https://randomuser.me/api/portraits/women/68.jpg",
     rating: 5,
-    text: 'Incredible service! The digital process made borrowing so simple — I got funds in my account within hours.',
+    text: "Incredible service! The digital process made borrowing so simple — I got funds in my account within hours.",
   },
   {
-    id: '5',
-    name: 'Vikram Singh',
-    role: 'Architect',
-    image: 'https://randomuser.me/api/portraits/men/12.jpg',
+    id: "5",
+    name: "Vikram Singh",
+    role: "Architect",
+    image: "https://randomuser.me/api/portraits/men/12.jpg",
     rating: 5,
-    text: 'The home loan rates are genuinely competitive. Transparent process, zero hidden fees. Highly recommended!',
+    text: "The home loan rates are genuinely competitive. Transparent process, zero hidden fees. Highly recommended!",
   },
 ];
 
 const trustFeaturesData: TrustFeature[] = [
-  { id: '1', title: 'RBI Registered', icon: 'ribbon-outline' },
-  { id: '2', title: 'ISO Certified', icon: 'shield-outline' },
-  { id: '3', title: 'Data Encryption', icon: 'lock-closed-outline' },
-  { id: '4', title: 'Instant Disbursal', icon: 'rocket-outline' },
-  { id: '5', title: 'No Hidden Fees', icon: 'eye-outline' },
-  { id: '6', title: 'Flexible Tenure', icon: 'calendar-outline' },
+  { id: "1", title: "RBI Registered", icon: "ribbon-outline" },
+  { id: "2", title: "ISO Certified", icon: "shield-outline" },
+  { id: "3", title: "Data Encryption", icon: "lock-closed-outline" },
+  { id: "4", title: "Instant Disbursal", icon: "rocket-outline" },
+  { id: "5", title: "No Hidden Fees", icon: "eye-outline" },
+  { id: "6", title: "Flexible Tenure", icon: "calendar-outline" },
 ];
 
 const faqData: FAQDataItem[] = [
   {
-    id: '1',
-    question: 'Is Finserv NBFC Finance Limited registered with RBI?',
-    answer: 'Yes, Finserv NBFC Finance Limited is a registered Non-Banking Financial Company (NBFC) regulated by the Reserve Bank of India (RBI). We comply with all RBI guidelines to ensure safe and transparent financial services.',
+    id: "1",
+    question: "Is Finserv NBFC Finance Limited registered with RBI?",
+    answer:
+      "Yes, Finserv NBFC Finance Limited is a registered Non-Banking Financial Company (NBFC) regulated by the Reserve Bank of India (RBI). We comply with all RBI guidelines to ensure safe and transparent financial services.",
   },
   {
-    id: '2',
-    question: 'What documents are required to apply for a loan?',
-    answer: 'Basic documents include Aadhaar Card, PAN Card, recent bank statements (last 3-6 months), salary slips or ITR (for self-employed), and address proof. Additional documents may be required based on the loan type.',
+    id: "2",
+    question: "What documents are required to apply for a loan?",
+    answer:
+      "Basic documents include Aadhaar Card, PAN Card, recent bank statements (last 3-6 months), salary slips or ITR (for self-employed), and address proof. Additional documents may be required based on the loan type.",
   },
   {
-    id: '3',
-    question: 'How long does the loan approval process take?',
-    answer: 'For most loan types, we offer approval within 24-48 hours of receiving all required documents. Personal loans and gold loans can be approved on the same day in many cases.',
+    id: "3",
+    question: "How long does the loan approval process take?",
+    answer:
+      "For most loan types, we offer approval within 24-48 hours of receiving all required documents. Personal loans and gold loans can be approved on the same day in many cases.",
   },
   {
-    id: '4',
-    question: 'Are there any hidden charges or fees?',
-    answer: 'Absolutely not. We maintain 100% transparency in our fee structure. All applicable charges including processing fees, prepayment charges, and late payment fees are clearly communicated before you sign the agreement.',
+    id: "4",
+    question: "Are there any hidden charges or fees?",
+    answer:
+      "Absolutely not. We maintain 100% transparency in our fee structure. All applicable charges including processing fees, prepayment charges, and late payment fees are clearly communicated before you sign the agreement.",
   },
   {
-    id: '5',
-    question: 'What interest rates do you offer?',
-    answer: 'Our interest rates start from 8.50% per annum and vary based on the loan type, amount, tenure, and your credit profile. We offer some of the most competitive rates in the market',
+    id: "5",
+    question: "What interest rates do you offer?",
+    answer:
+      "Our interest rates start from 8.50% per annum and vary based on the loan type, amount, tenure, and your credit profile. We offer some of the most competitive rates in the market",
   },
   {
-    id: '6',
-    question: 'Can I prepay or foreclose my loan?',
-    answer: 'Yes, you can prepay or foreclose your loan after a minimum lock-in period. Prepayment charges, if applicable, are nominal and clearly mentioned in your loan agreement.',
+    id: "6",
+    question: "Can I prepay or foreclose my loan?",
+    answer:
+      "Yes, you can prepay or foreclose your loan after a minimum lock-in period. Prepayment charges, if applicable, are nominal and clearly mentioned in your loan agreement.",
   },
   {
-    id: '7',
-    question: 'How is my personal data protected?',
-    answer: 'We use ISO 27001 certified, bank-grade encryption and security protocols to protect your data. Your personal and financial information is never shared with third parties without your explicit consent.',
+    id: "7",
+    question: "How is my personal data protected?",
+    answer:
+      "We use ISO 27001 certified, bank-grade encryption and security protocols to protect your data. Your personal and financial information is never shared with third parties without your explicit consent.",
   },
   {
-    id: '8',
-    question: 'What happens if I miss an EMI payment?',
-    answer: 'We recommend contacting us immediately if you anticipate a missed payment. We work with customers to find solutions, including EMI restructuring. Late payment charges may apply as per the loan agreement.',
+    id: "8",
+    question: "What happens if I miss an EMI payment?",
+    answer:
+      "We recommend contacting us immediately if you anticipate a missed payment. We work with customers to find solutions, including EMI restructuring. Late payment charges may apply as per the loan agreement.",
   },
 ];
 
-const FadeInView: React.FC<{ children: React.ReactNode; delay?: number; style?: any }> = ({
-  children,
-  delay = 0,
-  style,
-}) => {
+const FadeInView: React.FC<{
+  children: React.ReactNode;
+  delay?: number;
+  style?: any;
+}> = ({ children, delay = 0, style }) => {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(24)).current;
 
@@ -339,10 +352,18 @@ const ScalePressable: React.FC<{
   const scale = useRef(new Animated.Value(1)).current;
 
   const onPressIn = () =>
-    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50 }).start();
+    Animated.spring(scale, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      speed: 50,
+    }).start();
 
   const onPressOut = () =>
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 50,
+    }).start();
 
   return (
     <TouchableOpacity
@@ -351,12 +372,17 @@ const ScalePressable: React.FC<{
       onPressIn={onPressIn}
       onPressOut={onPressOut}
     >
-      <Animated.View style={[{ transform: [{ scale }] }, style]}>{children}</Animated.View>
+      <Animated.View style={[{ transform: [{ scale }] }, style]}>
+        {children}
+      </Animated.View>
     </TouchableOpacity>
   );
 };
 
-const SectionHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
+const SectionHeader: React.FC<{ title: string; subtitle?: string }> = ({
+  title,
+  subtitle,
+}) => (
   <View style={sStyles.sectionHeader}>
     <View style={sStyles.titleRow}>
       <View style={sStyles.titleAccent} />
@@ -372,8 +398,8 @@ const sStyles = StyleSheet.create({
     marginBottom: DS.sp20,
   },
   titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: DS.sp10,
   },
   titleAccent: {
@@ -384,7 +410,7 @@ const sStyles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: DS.fontXL,
-    fontWeight: '800',
+    fontWeight: "800",
     color: DS.darkNavy,
     letterSpacing: -0.5,
   },
@@ -397,7 +423,10 @@ const sStyles = StyleSheet.create({
   },
 });
 
-const WhyJioItemCard: React.FC<{ item: WhyJioItem; index: number }> = ({ item, index }) => {
+const WhyJioItemCard: React.FC<{ item: WhyJioItem; index: number }> = ({
+  item,
+  index,
+}) => {
   return (
     <FadeInView delay={index * 100}>
       <ScalePressable>
@@ -434,7 +463,12 @@ const LoanProductCard: React.FC<{ item: LoanProduct }> = ({ item }) => {
       >
         <View style={styles.loanCardDecor} />
 
-        <View style={[styles.loanIconContainer, { backgroundColor: `${item.accentColor}25` }]}>
+        <View
+          style={[
+            styles.loanIconContainer,
+            { backgroundColor: `${item.accentColor}25` },
+          ]}
+        >
           <Ionicons name={item.icon} size={26} color={item.accentColor} />
         </View>
 
@@ -442,8 +476,15 @@ const LoanProductCard: React.FC<{ item: LoanProduct }> = ({ item }) => {
         <Text style={styles.loanDescription}>{item.description}</Text>
 
         <View style={styles.loanCardFooter}>
-          <Text style={[styles.applyText, { color: item.accentColor }]}>Explore More</Text>
-          <View style={[styles.loanArrowCircle, { backgroundColor: `${item.accentColor}20` }]}>
+          <Text style={[styles.applyText, { color: item.accentColor }]}>
+            Explore More
+          </Text>
+          <View
+            style={[
+              styles.loanArrowCircle,
+              { backgroundColor: `${item.accentColor}20` },
+            ]}
+          >
             <Ionicons name="arrow-forward" size={14} color={item.accentColor} />
           </View>
         </View>
@@ -476,7 +517,7 @@ const TestimonialSection: React.FC = () => {
     [...Array(5)].map((_, i) => (
       <Ionicons
         key={i}
-        name={i < rating ? 'star' : 'star-outline'}
+        name={i < rating ? "star" : "star-outline"}
         size={14}
         color={DS.goldenYellow}
       />
@@ -485,7 +526,7 @@ const TestimonialSection: React.FC = () => {
   const renderCard = ({ item }: { item: Testimonial }) => (
     <View style={styles.testimonialCard}>
       <View style={styles.testimonialQuoteMark}>
-        <Text style={styles.testimonialQuoteText}>"</Text>
+        <Text style={styles.testimonialQuoteText}>&quot;</Text>
       </View>
       <Text style={styles.testimonialText}>{item.text}</Text>
       <View style={styles.testimonialDivider} />
@@ -511,14 +552,19 @@ const TestimonialSection: React.FC = () => {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={(e) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / (screenWidth - 40));
+          const index = Math.round(
+            e.nativeEvent.contentOffset.x / (screenWidth - 40),
+          );
           setCurrentIndex(index);
         }}
         contentContainerStyle={styles.testimonialListContent}
       />
       <View style={styles.testimonialNavigation}>
         <TouchableOpacity
-          style={[styles.navButton, currentIndex === 0 && styles.navButtonDisabled]}
+          style={[
+            styles.navButton,
+            currentIndex === 0 && styles.navButtonDisabled,
+          ]}
           onPress={handlePrev}
           disabled={currentIndex === 0}
         >
@@ -530,13 +576,17 @@ const TestimonialSection: React.FC = () => {
         </TouchableOpacity>
         <View style={styles.paginationDots}>
           {testimonialsData.map((_, i) => (
-            <View key={i} style={[styles.dot, i === currentIndex && styles.dotActive]} />
+            <View
+              key={i}
+              style={[styles.dot, i === currentIndex && styles.dotActive]}
+            />
           ))}
         </View>
         <TouchableOpacity
           style={[
             styles.navButton,
-            currentIndex === testimonialsData.length - 1 && styles.navButtonDisabled,
+            currentIndex === testimonialsData.length - 1 &&
+              styles.navButtonDisabled,
           ]}
           onPress={handleNext}
           disabled={currentIndex === testimonialsData.length - 1}
@@ -544,7 +594,11 @@ const TestimonialSection: React.FC = () => {
           <Ionicons
             name="chevron-forward"
             size={20}
-            color={currentIndex === testimonialsData.length - 1 ? DS.border : DS.darkNavy}
+            color={
+              currentIndex === testimonialsData.length - 1
+                ? DS.border
+                : DS.darkNavy
+            }
           />
         </TouchableOpacity>
       </View>
@@ -554,7 +608,11 @@ const TestimonialSection: React.FC = () => {
 
 const TrustCarousel: React.FC = () => {
   const translateX = useRef(new Animated.Value(0)).current;
-  const infiniteData = [...trustFeaturesData, ...trustFeaturesData, ...trustFeaturesData];
+  const infiniteData = [
+    ...trustFeaturesData,
+    ...trustFeaturesData,
+    ...trustFeaturesData,
+  ];
   const CARD_WIDTH = 148;
 
   useEffect(() => {
@@ -565,7 +623,7 @@ const TrustCarousel: React.FC = () => {
         duration: 8000,
         easing: Easing.linear,
         useNativeDriver: true,
-      })
+      }),
     );
     animation.start();
     return () => animation.stop();
@@ -587,7 +645,10 @@ const TrustCarousel: React.FC = () => {
   );
 };
 
-const FAQItemCard: React.FC<{ item: FAQDataItem; isLast: boolean }> = ({ item, isLast }) => {
+const FAQItemCard: React.FC<{ item: FAQDataItem; isLast: boolean }> = ({
+  item,
+  isLast,
+}) => {
   const [expanded, setExpanded] = useState(false);
   const animHeight = useRef(new Animated.Value(0)).current;
   const animOpacity = useRef(new Animated.Value(0)).current;
@@ -629,22 +690,39 @@ const FAQItemCard: React.FC<{ item: FAQDataItem; isLast: boolean }> = ({ item, i
 
   const rotate = animRotate.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '45deg'],
+    outputRange: ["0deg", "45deg"],
   });
 
   return (
     <View style={[styles.faqItem, isLast && { borderBottomWidth: 0 }]}>
-      <TouchableOpacity style={styles.faqQuestionContainer} onPress={toggle} activeOpacity={0.7}>
-        <Text style={[styles.faqQuestion, expanded && { color: DS.warmMustard }]}>
+      <TouchableOpacity
+        style={styles.faqQuestionContainer}
+        onPress={toggle}
+        activeOpacity={0.7}
+      >
+        <Text
+          style={[styles.faqQuestion, expanded && { color: DS.warmMustard }]}
+        >
           {item.question}
         </Text>
         <Animated.View style={{ transform: [{ rotate }] }}>
-          <View style={[styles.faqIconCircle, expanded && { backgroundColor: DS.warmMustard }]}>
-            <Ionicons name="add" size={16} color={expanded ? '#FFFFFF' : DS.warmMustard} />
+          <View
+            style={[
+              styles.faqIconCircle,
+              expanded && { backgroundColor: DS.warmMustard },
+            ]}
+          >
+            <Ionicons
+              name="add"
+              size={16}
+              color={expanded ? "#FFFFFF" : DS.warmMustard}
+            />
           </View>
         </Animated.View>
       </TouchableOpacity>
-      <Animated.View style={[styles.faqAnswerContainer, { maxHeight, opacity: animOpacity }]}>
+      <Animated.View
+        style={[styles.faqAnswerContainer, { maxHeight, opacity: animOpacity }]}
+      >
         <Text style={styles.faqAnswer}>{item.answer}</Text>
       </Animated.View>
     </View>
@@ -654,7 +732,11 @@ const FAQItemCard: React.FC<{ item: FAQDataItem; isLast: boolean }> = ({ item, i
 const FAQAccordion: React.FC<{ items: FAQDataItem[] }> = ({ items }) => (
   <View style={styles.faqContainer}>
     {items.map((item, index) => (
-      <FAQItemCard key={item.id} item={item} isLast={index === items.length - 1} />
+      <FAQItemCard
+        key={item.id}
+        item={item}
+        isLast={index === items.length - 1}
+      />
     ))}
   </View>
 );
@@ -662,10 +744,10 @@ const FAQAccordion: React.FC<{ items: FAQDataItem[] }> = ({ items }) => (
 const StatsRow: React.FC = () => (
   <View style={styles.statsRow}>
     {[
-      { value: '₹500Cr+', label: 'Disbursed' },
-      { value: '2L+', label: 'Customers' },
-      { value: '8.50%', label: 'Starting Rate' },
-      { value: '24hr', label: 'Approval' },
+      { value: "₹500Cr+", label: "Disbursed" },
+      { value: "2L+", label: "Customers" },
+      { value: "8.50%", label: "Starting Rate" },
+      { value: "24hr", label: "Approval" },
     ].map((stat, i) => (
       <View key={i} style={[styles.statItem, i < 3 && styles.statItemBorder]}>
         <Text style={styles.statValue}>{stat.value}</Text>
@@ -686,36 +768,38 @@ export default function HomeScreen() {
     >
       <View style={styles.heroContainer}>
         <ImageBackground
-          source={require('../../assets/images/HomeScreen1.webp')}
+          source={require("../../assets/images/HomeScreen1.webp")}
           style={styles.heroBackground}
           resizeMode="cover"
         >
           <LinearGradient
-            colors={['rgba(26,34,53,0.55)', 'rgba(26,34,53,0.97)']}
+            colors={["rgba(26,34,53,0.55)", "rgba(26,34,53,0.97)"]}
             style={styles.heroOverlay}
           >
             <FadeInView delay={100}>
               <View style={styles.heroBadge}>
                 <View style={styles.heroBadgeDot} />
-                <Text style={styles.heroBadgeText}>Trusted by 50k+ Customers</Text>
+                <Text style={styles.heroBadgeText}>
+                  Trusted by 50k+ Customers
+                </Text>
               </View>
             </FadeInView>
 
             <FadeInView delay={200}>
               <Text style={styles.heroMainText}>
-                Your trusted{'\n'}financial partner
+                Your trusted{"\n"}financial partner
               </Text>
             </FadeInView>
 
             <FadeInView delay={350}>
               <Text style={styles.heroSubtitle}>
-                Instant loans from 8.50% p.a. · Minimal docs · Quick approval. We're here to make
-                your financial dreams come true.
+                Instant loans from 8.50% p.a. · Minimal docs · Quick approval.
+                We&apos;re here to make your financial dreams come true.
               </Text>
             </FadeInView>
 
             <FadeInView delay={500} style={styles.heroCTARow}>
-              <ScalePressable onPress={() => router.push('/profile')}>
+              <ScalePressable onPress={() => router.push("/profile")}>
                 <LinearGradient
                   colors={[DS.warmMustard, DS.goldenYellow]}
                   style={styles.getStartedButton}
@@ -727,7 +811,7 @@ export default function HomeScreen() {
                 </LinearGradient>
               </ScalePressable>
 
-              <ScalePressable onPress={() => router.push('/emi-calculator')}>
+              <ScalePressable onPress={() => router.push("/emi-calculator")}>
                 <View style={styles.eligibilityButton}>
                   <Text style={styles.eligibilityText}>Calculate EMI</Text>
                 </View>
@@ -738,7 +822,10 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Why JioFinserv" subtitle="Built for speed, trust, and simplicity" />
+        <SectionHeader
+          title="Why JioFinserv"
+          subtitle="Built for speed, trust, and simplicity"
+        />
         <View style={styles.whyJioList}>
           {whyJioData.map((item, index) => (
             <WhyJioItemCard key={item.id} item={item} index={index} />
@@ -747,7 +834,10 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Loan Products" subtitle="Choose what fits your life" />
+        <SectionHeader
+          title="Loan Products"
+          subtitle="Choose what fits your life"
+        />
         <FlatList
           data={loanProductsData}
           renderItem={({ item }) => <LoanProductCard item={item} />}
@@ -759,7 +849,10 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Customer Stories" subtitle="Real people, real impact" />
+        <SectionHeader
+          title="Customer Stories"
+          subtitle="Real people, real impact"
+        />
         <TestimonialSection />
       </View>
 
@@ -791,26 +884,26 @@ const styles = StyleSheet.create({
     width: screenWidth,
   },
   heroBackground: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   heroOverlay: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: DS.sp24,
     paddingBottom: DS.sp32,
   },
   heroBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 100,
     paddingHorizontal: DS.sp12,
     paddingVertical: DS.sp4 + 2,
     marginBottom: DS.sp16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: "rgba(255,255,255,0.2)",
     gap: DS.sp8,
   },
   heroBadgeDot: {
@@ -821,34 +914,34 @@ const styles = StyleSheet.create({
   },
   heroBadgeText: {
     fontSize: DS.fontXS + 1,
-    color: 'rgba(255,255,255,0.9)',
-    fontWeight: '600',
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "600",
     letterSpacing: 0.3,
   },
   heroMainText: {
     fontSize: DS.fontXXL,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    fontWeight: "900",
+    color: "#FFFFFF",
     lineHeight: 46,
     letterSpacing: -0.8,
     marginBottom: DS.sp16,
   },
   heroSubtitle: {
     fontSize: DS.fontSM + 1,
-    color: 'rgba(255,255,255,0.75)',
+    color: "rgba(255,255,255,0.75)",
     lineHeight: 24,
     marginBottom: DS.sp24,
-    fontWeight: '400',
+    fontWeight: "400",
     maxWidth: screenWidth * 0.85,
   },
   heroCTARow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: DS.sp12,
     marginBottom: DS.sp28,
   },
   getStartedButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: DS.sp8,
     paddingHorizontal: DS.sp20,
     paddingVertical: DS.sp12 + 2,
@@ -856,55 +949,55 @@ const styles = StyleSheet.create({
     ...DS.shadowGold,
   },
   getStartedText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: DS.fontMD,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.2,
   },
   eligibilityButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: DS.sp20,
     paddingVertical: DS.sp12 + 2,
     borderRadius: DS.radiusMD,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.35)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: "rgba(255,255,255,0.35)",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   eligibilityText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: DS.fontMD,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   statsRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.10)",
     borderRadius: DS.radiusMD,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    overflow: 'hidden',
+    borderColor: "rgba(255,255,255,0.15)",
+    overflow: "hidden",
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: DS.sp12,
   },
   statItemBorder: {
     borderRightWidth: 1,
-    borderRightColor: 'rgba(255,255,255,0.15)',
+    borderRightColor: "rgba(255,255,255,0.15)",
   },
   statValue: {
     fontSize: DS.fontMD,
-    fontWeight: '800',
+    fontWeight: "800",
     color: DS.goldenYellow,
     letterSpacing: -0.3,
   },
   statLabel: {
     fontSize: DS.fontXS,
-    color: 'rgba(255,255,255,0.6)',
+    color: "rgba(255,255,255,0.6)",
     marginTop: 2,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 
   section: {
@@ -916,8 +1009,8 @@ const styles = StyleSheet.create({
     gap: DS.sp10,
   },
   whyJioCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: DS.surface,
     borderRadius: DS.radiusMD,
     padding: DS.sp16,
@@ -929,8 +1022,8 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: DS.radiusSM + 2,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: DS.sp14,
   },
   whyJioContent: {
@@ -938,7 +1031,7 @@ const styles = StyleSheet.create({
   },
   whyJioTitle: {
     fontSize: DS.fontMD,
-    fontWeight: '700',
+    fontWeight: "700",
     color: DS.darkNavy,
     marginBottom: DS.sp4,
     letterSpacing: -0.2,
@@ -947,7 +1040,7 @@ const styles = StyleSheet.create({
     fontSize: DS.fontXS + 1,
     color: DS.lightGray,
     lineHeight: 18,
-    fontWeight: '400',
+    fontWeight: "400",
   },
   whyJioArrow: {
     marginLeft: DS.sp8,
@@ -962,15 +1055,15 @@ const styles = StyleSheet.create({
     borderRadius: DS.radiusLG,
     padding: DS.sp20,
     width: 230,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...DS.shadowMedium,
   },
   loanCardDecor: {
-    position: 'absolute',
+    position: "absolute",
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: "rgba(255,255,255,0.06)",
     top: -40,
     right: -40,
   },
@@ -978,26 +1071,26 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: DS.radiusMD,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: DS.sp14,
   },
   loanType: {
     fontSize: DS.fontMD + 1,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: "800",
+    color: "#FFFFFF",
     marginBottom: DS.sp4,
     letterSpacing: -0.3,
   },
   loanDescription: {
     fontSize: DS.fontXS,
-    color: 'rgba(255,255,255,0.65)',
+    color: "rgba(255,255,255,0.65)",
     marginBottom: DS.sp16,
     lineHeight: 18,
   },
   loanRatePill: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 100,
     paddingHorizontal: DS.sp10,
     paddingVertical: DS.sp4,
@@ -1005,27 +1098,27 @@ const styles = StyleSheet.create({
   },
   loanRateText: {
     fontSize: DS.fontXS,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
   loanCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.12)',
+    borderTopColor: "rgba(255,255,255,0.12)",
     paddingTop: DS.sp14,
   },
   applyText: {
     fontSize: DS.fontSM,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   loanArrowCircle: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   testimonialContainer: {
@@ -1050,15 +1143,15 @@ const styles = StyleSheet.create({
     fontSize: 56,
     color: DS.warmMustard,
     lineHeight: 48,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   testimonialText: {
     fontSize: DS.fontSM + 1,
     color: DS.navyMid,
     lineHeight: 24,
     marginBottom: DS.sp20,
-    fontStyle: 'italic',
-    fontWeight: '400',
+    fontStyle: "italic",
+    fontWeight: "400",
   },
   testimonialDivider: {
     height: 1,
@@ -1066,8 +1159,8 @@ const styles = StyleSheet.create({
     marginBottom: DS.sp16,
   },
   testimonialHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   testimonialImage: {
     width: 46,
@@ -1082,7 +1175,7 @@ const styles = StyleSheet.create({
   },
   testimonialName: {
     fontSize: DS.fontSM + 1,
-    fontWeight: '700',
+    fontWeight: "700",
     color: DS.darkNavy,
     letterSpacing: -0.2,
   },
@@ -1093,13 +1186,13 @@ const styles = StyleSheet.create({
     marginBottom: DS.sp4,
   },
   ratingContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 2,
   },
   testimonialNavigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: DS.sp20,
     gap: DS.sp16,
   },
@@ -1108,8 +1201,8 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     backgroundColor: DS.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: DS.border,
     ...DS.shadowSoft,
@@ -1118,9 +1211,9 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   paginationDots: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: DS.sp6,
-    alignItems: 'center',
+    alignItems: "center",
   },
   dot: {
     width: 7,
@@ -1136,11 +1229,11 @@ const styles = StyleSheet.create({
 
   trustCarouselContainer: {
     height: 96,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   trustRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingLeft: DS.sp20,
   },
   trustCard: {
@@ -1149,7 +1242,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: DS.sp16,
     paddingVertical: DS.sp12,
     marginRight: DS.sp12,
-    alignItems: 'center',
+    alignItems: "center",
     width: 136,
     ...DS.shadowSoft,
     borderWidth: 1,
@@ -1160,15 +1253,15 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: DS.radiusSM,
     backgroundColor: `${DS.warmMustard}12`,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: DS.sp6,
   },
   trustTitle: {
     fontSize: DS.fontXS,
-    fontWeight: '600',
+    fontWeight: "600",
     color: DS.darkNavy,
-    textAlign: 'center',
+    textAlign: "center",
     letterSpacing: 0.1,
   },
 
@@ -1176,7 +1269,7 @@ const styles = StyleSheet.create({
     marginHorizontal: DS.sp20,
     backgroundColor: DS.surface,
     borderRadius: DS.radiusLG,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...DS.shadowSoft,
     borderWidth: 1,
     borderColor: DS.border,
@@ -1184,18 +1277,18 @@ const styles = StyleSheet.create({
   faqItem: {
     borderBottomWidth: 1,
     borderBottomColor: DS.border,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   faqQuestionContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: DS.sp18,
     paddingVertical: DS.sp16,
   },
   faqQuestion: {
     fontSize: DS.fontSM,
-    fontWeight: '600',
+    fontWeight: "600",
     color: DS.darkNavy,
     flex: 1,
     marginRight: DS.sp12,
@@ -1206,20 +1299,20 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     backgroundColor: `${DS.warmMustard}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   faqAnswerContainer: {
-    overflow: 'hidden',
+    overflow: "hidden",
     paddingHorizontal: DS.sp18,
-    backgroundColor: '#FAFBFD',
+    backgroundColor: "#FAFBFD",
   },
   faqAnswer: {
     fontSize: DS.fontXS + 1,
     color: DS.lightGray,
     lineHeight: 22,
     paddingBottom: DS.sp16,
-    fontWeight: '400',
+    fontWeight: "400",
   },
 
   bottomCTAWrap: {
@@ -1232,27 +1325,27 @@ const styles = StyleSheet.create({
     ...DS.shadowMedium,
   },
   bottomCTAInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   bottomCTAHeading: {
     fontSize: DS.fontLG,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: "800",
+    color: "#FFFFFF",
     letterSpacing: -0.4,
     marginBottom: DS.sp4,
   },
   bottomCTASubtext: {
     fontSize: DS.fontSM,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '400',
+    color: "rgba(255,255,255,0.6)",
+    fontWeight: "400",
   },
   bottomCTAArrow: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

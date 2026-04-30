@@ -33,7 +33,7 @@ export const TestimonialCard: React.FC<TestimonialCardProps> = ({
   return (
     <View style={styles.container}>
       {/* Quote Icon */}
-      <Text style={styles.quoteIcon}>"</Text>
+      <Text style={styles.quoteIcon}>&quot;</Text>
 
       {/* Testimonial Text */}
       <Text style={styles.testimonial} numberOfLines={3}>
