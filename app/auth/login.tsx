@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/store/authStore';
@@ -87,6 +88,11 @@ export default function LoginScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
+          <Image
+            source={require('../../assets/images/logoimg.jpeg')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.welcomeTitle}>Welcome Back</Text>
           <Text style={styles.welcomeSubtitle}>
             Log in to your Jio Finserv account
@@ -199,8 +205,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logo: {
-    fontSize: 48,
+  logoImage: {
+    width: 120,
+    height: 60,
     marginBottom: 12,
   },
   welcomeTitle: {

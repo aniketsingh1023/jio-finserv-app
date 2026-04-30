@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   View,
+  Image,
   Text,
   StyleSheet,
   TouchableOpacity,
@@ -31,7 +32,11 @@ export const GlobalHeader: React.FC = () => {
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <View style={styles.content}>
-        <Text style={styles.logo}>Jio Finserv</Text>
+        <Image
+          source={require('../../assets/images/logoimg.jpeg')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
 
         <TouchableOpacity
           style={styles.button}
@@ -62,10 +67,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.primary,
-    letterSpacing: 0.5,
+    width: 120,
+    height: 40,
   },
   button: {
     paddingHorizontal: 14,
