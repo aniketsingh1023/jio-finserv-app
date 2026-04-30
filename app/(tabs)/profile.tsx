@@ -160,6 +160,7 @@ export default function ProfileScreen() {
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
+      contentContainerStyle={{ paddingBottom: 120 }}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -657,8 +658,8 @@ const styles = StyleSheet.create({
   logoutButton: {
     flexDirection: "row",
     marginHorizontal: 16,
-    marginBottom: 16,
-    paddingVertical: 12,
+    marginBottom: 18,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     backgroundColor: "#FF3B30" + "15",
     borderRadius: 8,

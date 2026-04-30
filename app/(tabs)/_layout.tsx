@@ -27,18 +27,17 @@ export default function TabLayout() {
             {
               borderTopColor: Colors.border,
               paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
-              height: Platform.OS === 'ios' ? 80 + insets.bottom : 60,
+              height: Platform.OS === 'ios' ? 70 + insets.bottom : 65,
             },
           ],
-          tabBarLabelStyle: styles.tabBarLabel,
+          tabBarLabel: '',
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
             title: 'Home',
-            tabBarLabel: 'Home',
-            tabBarIcon: ({ color }) => <Icon name="home" size={24} color={color} />,
+            tabBarIcon: ({ color }) => <Icon name="home" size={32} color={color} />,
           }}
         />
 
@@ -46,8 +45,7 @@ export default function TabLayout() {
           name="about"
           options={{
             title: 'About',
-            tabBarLabel: 'About',
-            tabBarIcon: ({ color }) => <Icon name="info" size={24} color={color} />,
+            tabBarIcon: ({ color }) => <Icon name="info" size={32} color={color} />,
           }}
         />
 
@@ -55,8 +53,7 @@ export default function TabLayout() {
           name="emi-calculator"
           options={{
             title: 'EMI Calculator',
-            tabBarLabel: 'EMI',
-            tabBarIcon: ({ color }) => <Icon name="calculator" size={24} color={color} />,
+            tabBarIcon: ({ color }) => <Icon name="calculator" size={32} color={color} />,
           }}
         />
 
@@ -64,8 +61,7 @@ export default function TabLayout() {
           name="contact"
           options={{
             title: 'Contact',
-            tabBarLabel: 'Contact',
-            tabBarIcon: ({ color }) => <Icon name="phone" size={24} color={color} />,
+            tabBarIcon: ({ color }) => <Icon name="phone" size={32} color={color} />,
           }}
         />
 
@@ -73,8 +69,7 @@ export default function TabLayout() {
           name="profile"
           options={{
             title: 'Profile',
-            tabBarLabel: 'Profile',
-            tabBarIcon: ({ color }) => <Icon name="profile" size={24} color={color} />,
+            tabBarIcon: ({ color }) => <Icon name="profile" size={32} color={color} />,
           }}
         />
       </Tabs>
@@ -86,7 +81,7 @@ const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: Colors.white,
     borderTopWidth: 1,
-    paddingTop: 8,
+    paddingTop: 12,
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -96,10 +91,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-  },
-  tabBarLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 4,
   },
 });

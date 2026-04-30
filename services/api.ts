@@ -56,6 +56,15 @@ api.interceptors.response.use(
           "AXIOS RESPONSE ERROR - Message:",
           error.response?.data?.message || error.message
         );
+        console.error("AXIOS ERROR Code:", error.code);
+        console.error("AXIOS ERROR Request URL:", error.config?.url);
+        
+        // Additional debugging for network errors
+        if (error.code === "ECONNREFUSED" || error.message === "Network Error") {
+          console.error("Cannot connect to backend at:", BASE_URL);
+          console.error("Make sure backend is running on port 5050");
+          console.error("Your frontend IP:", error.config?.baseURL);
+        }
       } else {
         console.error("AXIOS RESPONSE ERROR:", error?.message);
       }
