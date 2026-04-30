@@ -1,13 +1,13 @@
 import axios from "axios";
 import * as tokenStorage from "../utils/storage";
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || "https://api.jiofinserv.org";
 console.log("API URL:", process.env.EXPO_PUBLIC_API_URL);
 console.log("EXPO_PUBLIC_API_URL:", BASE_URL);
 
-
 if (!BASE_URL) {
-  throw new Error("EXPO_PUBLIC_API_URL is not defined");
+  console.error("WARNING: EXPO_PUBLIC_API_URL is not defined, using fallback");
 }
 
 const api = axios.create({
@@ -54,13 +54,16 @@ api.interceptors.response.use(
         console.error("AXIOS RESPONSE ERROR - Status:", error.response?.status);
         console.error(
           "AXIOS RESPONSE ERROR - Message:",
-          error.response?.data?.message || error.message
+          error.response?.data?.message || error.message,
         );
         console.error("AXIOS ERROR Code:", error.code);
         console.error("AXIOS ERROR Request URL:", error.config?.url);
-        
+
         // Additional debugging for network errors
-        if (error.code === "ECONNREFUSED" || error.message === "Network Error") {
+        if (
+          error.code === "ECONNREFUSED" ||
+          error.message === "Network Error"
+        ) {
           console.error("Cannot connect to backend at:", BASE_URL);
           console.error("Make sure backend is running on port 5050");
           console.error("Your frontend IP:", error.config?.baseURL);
@@ -73,11 +76,11 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 const formatError = (
-  error: any
+  error: any,
 ): { message: string; status?: number; data?: any } => {
   if (axios.isAxiosError(error)) {
     try {
@@ -86,7 +89,7 @@ const formatError = (
         "API Error - Message:",
         error.response?.data?.error ||
           error.response?.data?.message ||
-          error.message
+          error.message,
       );
     } catch {
       console.error("API Request failed:", error.message);
@@ -109,7 +112,7 @@ const formatError = (
 };
 
 const formatFetchError = async (
-  response: Response
+  response: Response,
 ): Promise<{ message: string; status?: number; data?: any }> => {
   let data: any = null;
 
@@ -163,7 +166,7 @@ export const post = async <T>(url: string, data?: unknown): Promise<T> => {
  */
 export const postFormData = async <T>(
   url: string,
-  data: FormData
+  data: FormData,
 ): Promise<T> => {
   try {
     const token = await tokenStorage.getToken();
@@ -196,7 +199,7 @@ export const postFormData = async <T>(
   } catch (error: any) {
     console.error(
       "FORMDATA API Error:",
-      error?.message || "Failed to upload form data"
+      error?.message || "Failed to upload form data",
     );
 
     throw {
