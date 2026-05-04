@@ -52,10 +52,7 @@ export interface LoanApplicationsResponse {
   count: number;
 }
 
-/**
- * Create a new loan application with optional file uploads (requires authentication)
- * Accepts either FormData (with files) or regular data object
- */
+
 export const createLoanApplication = async (
   data: LoanApplicationData | FormData
 ): Promise<LoanApplicationResponse> => {

@@ -44,7 +44,7 @@ export type LoanApplicationPdfData = {
   applicationDate?: string;
   lenderName?: string;
   platformName?: string;
-
+  borrowerMobileNo?: string;
   step1?: Step1Personal;
   step2?: Step2Employment;
   step3?: Step3Loan;
@@ -52,12 +52,12 @@ export type LoanApplicationPdfData = {
 };
 
 const safe = (value: unknown) => {
-  if (value === undefined || value === null || value === "") return "N/A";
+  if (value === undefined || value === null || value === "") return "NA";
   return String(value);
 };
 
 const formatCurrency = (value: unknown) => {
-  if (value === undefined || value === null || value === "") return "N/A";
+  if (value === undefined || value === null || value === "") return "NA";
 
   const num =
     typeof value === "number"
@@ -66,11 +66,9 @@ const formatCurrency = (value: unknown) => {
 
   if (Number.isNaN(num)) return String(value);
 
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
+  return `₹ ${new Intl.NumberFormat("en-IN", {
     maximumFractionDigits: 0,
-  }).format(num);
+  }).format(num)}`;
 };
 
 export const buildLoanApplicationHtml = (data: LoanApplicationPdfData) => {
@@ -79,169 +77,381 @@ export const buildLoanApplicationHtml = (data: LoanApplicationPdfData) => {
   const s3 = data.step3 || {};
   const s4 = data.step4 || {};
 
+  const fullAddress = [s1.address, s1.city, s1.state, s1.pincode]
+    .filter(Boolean)
+    .join(", ");
+
   return `
   <html>
     <head>
       <meta charset="utf-8" />
       <style>
-        body {
-          font-family: Arial, sans-serif;
-          padding: 24px;
-          color: #222;
-          font-size: 12px;
-          line-height: 1.5;
+        @page {
+          size: A4;
+          margin: 18px;
         }
 
-        .header {
-          text-align: center;
-          border-bottom: 2px solid #caa74a;
-          padding-bottom: 12px;
+        body {
+          margin: 0;
+          font-family: Arial, Helvetica, sans-serif;
+          color: #111;
+          font-size: 11px;
+          line-height: 1.25;
+        }
+
+        .top-bar,
+        .bottom-bar {
+          height: 28px;
+          background: #18538f;
           margin-bottom: 18px;
         }
 
+        .brand-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 4px solid #18538f;
+          padding: 0 24px 8px 24px;
+          margin-bottom: 24px;
+        }
+
+        .brand-left,
+        .brand-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .jio-circle {
+          width: 46px;
+          height: 46px;
+          border-radius: 50%;
+          background: #f2b247;
+          color: white;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          font-weight: 800;
+        }
+
+        .brand-name {
+          font-size: 26px;
+          font-weight: 800;
+        }
+
+        .company-name {
+          font-size: 18px;
+          font-weight: 700;
+          color: #333;
+        }
+
         .title {
-          font-size: 20px;
-          font-weight: bold;
-          color: #8b6b16;
-          margin-bottom: 4px;
+          text-align: center;
+          font-size: 22px;
+          font-weight: 800;
+          margin: 22px 0 56px 0;
         }
 
-        .subtitle {
-          font-size: 12px;
-          color: #555;
+        .meta-grid {
+          display: grid;
+          grid-template-columns: 1fr 1.35fr;
+          column-gap: 40px;
+          row-gap: 4px;
+          margin-bottom: 8px;
+          font-size: 11px;
         }
 
-        .meta {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 10px 0 18px 0;
+        .bold {
+          font-weight: 700;
         }
 
-        .meta td {
-          padding: 6px 8px;
-          border: 1px solid #ddd;
-        }
-
-        .section-title {
-          background: #f4ead0;
-          color: #5f4a12;
-          font-weight: bold;
-          padding: 8px 10px;
-          margin-top: 18px;
-          border: 1px solid #e1d1a0;
+        .link {
+          color: #004eea;
+          text-decoration: underline;
         }
 
         table {
           width: 100%;
           border-collapse: collapse;
-          margin-top: 0;
         }
 
-        th, td {
-          border: 1px solid #ddd;
+        td, th {
+          border: 1px solid #c9ced3;
+          padding: 10px 9px;
+          vertical-align: middle;
+        }
+
+        .part-title {
+          text-align: center;
+          font-size: 14px;
+          font-weight: 800;
+          background: #f7f7f7;
           padding: 8px;
-          vertical-align: top;
-          text-align: left;
         }
 
-        th {
-          background: #faf6ea;
-          width: 34%;
-          color: #333;
+        .sr {
+          width: 26px;
+          text-align: center;
+          font-weight: 700;
         }
 
-        .small {
-          font-size: 11px;
-          color: #555;
+        .label {
+          font-weight: 700;
+          width: 26%;
         }
 
-        .footer {
-          margin-top: 24px;
-          font-size: 11px;
-          color: #666;
+        .value {
+          font-weight: 700;
+          text-align: center;
         }
 
-        .badge {
-          display: inline-block;
-          padding: 4px 8px;
-          background: #f8f1df;
-          border: 1px solid #d7c08a;
-          border-radius: 4px;
-          font-weight: bold;
-          color: #5c4710;
+        .normal-value {
+          font-weight: 600;
+          text-align: center;
+        }
+
+        .section-gap {
+          height: 18px;
+        }
+
+        .sub-heading {
+          font-size: 13px;
+          font-weight: 800;
+          margin: 18px 0 8px 0;
+        }
+
+        .charges {
+          margin-top: 26px;
+          font-size: 13px;
+          color: #2f3740;
+        }
+
+        .charges ul {
+          margin-top: 14px;
+          padding-left: 24px;
+        }
+
+        .charges li {
+          margin-bottom: 6px;
+        }
+
+        .thank-you {
+          margin-top: 28px;
+          font-size: 14px;
+        }
+
+        .signature {
+          margin-top: 90px;
+          font-size: 12px;
+        }
+
+        .signed {
+          color: #168be8;
+          font-weight: 700;
+          text-decoration: underline;
+          margin-bottom: 28px;
+        }
+
+        .footer-brand {
+          margin-top: 16px;
+        }
+
+        .page-break {
+          page-break-before: always;
         }
       </style>
     </head>
+
     <body>
-      <div class="header">
-        <div class="title">Loan Application Review Summary</div>
-        <div class="subtitle">Generated from multi-step application form</div>
+      <div class="top-bar"></div>
+
+      <div class="brand-row">
+        <div class="brand-left">
+          <span class="jio-circle">Jio</span>
+          <span class="brand-name">Finance</span>
+        </div>
+
+        <div class="brand-right">
+          <span class="jio-circle">Jio</span>
+          <span class="company-name">Financial Services Private Limited</span>
+        </div>
       </div>
 
-      <table class="meta">
+      <div class="title">Loan Application Details</div>
+
+      <div class="meta-grid">
+        <div><span class="bold">Date:</span> ${safe(data.applicationDate)}</div>
+        <div><span class="bold">Name of the lender:</span> ${safe(data.lenderName || "Jio Financial Services Private Limited")}</div>
+
+        <div><span class="bold">Application No.:</span> ${safe(data.applicationNumber)}</div>
+        <div><span class="bold">Name of digital lending platform:</span> <span class="link">${safe(data.platformName || "https://jiofinserv.org/")}</span></div>
+
+        <div><span class="bold">Borrower Name:</span> ${safe(s1.fullName)}</div>
+        <div><span class="bold">Borrower Mobile No:</span> ${safe(s1.phone || data.borrowerMobileNo)}</div>
+
+        <div style="grid-column: 1 / span 2;">
+          <span class="bold">Borrower Full Address:</span> ${safe(fullAddress)}
+        </div>
+      </div>
+
+      <table>
         <tr>
-          <td><strong>Date</strong><br/>${safe(data.applicationDate)}</td>
-          <td><strong>Application No.</strong><br/>${safe(data.applicationNumber)}</td>
+          <td colspan="5" class="part-title">Part 1 (Loan Application and Applicant Details)</td>
         </tr>
+
         <tr>
-          <td><strong>Lender Name</strong><br/>${safe(data.lenderName || "Jio Financial Services Private Limited")}</td>
-          <td><strong>Platform</strong><br/>${safe(data.platformName || "https://jiofinserv.org/")}</td>
+          <td class="sr">1</td>
+          <td class="label">Application / Account No.</td>
+          <td class="value">${safe(data.applicationNumber)}</td>
+          <td class="label">Type of Loan</td>
+          <td class="value">${safe(s3.loanType)}</td>
         </tr>
-      </table>
 
-      <div class="section-title">Step 1 - Personal Details</div>
-      <table>
-        <tr><th>Full Name</th><td>${safe(s1.fullName)}</td></tr>
-        <tr><th>Mobile Number</th><td>${safe(s1.phone)}</td></tr>
-        <tr><th>Email</th><td>${safe(s1.email)}</td></tr>
-        <tr><th>Date of Birth</th><td>${safe(s1.dob)}</td></tr>
-        <tr><th>Gender</th><td>${safe(s1.gender)}</td></tr>
-        <tr><th>Address</th><td>${safe(s1.address)}</td></tr>
-        <tr><th>City</th><td>${safe(s1.city)}</td></tr>
-        <tr><th>State</th><td>${safe(s1.state)}</td></tr>
-        <tr><th>Pincode</th><td>${safe(s1.pincode)}</td></tr>
-      </table>
-
-      <div class="section-title">Step 2 - Employment Details</div>
-      <table>
-        <tr><th>Employment Type</th><td>${safe(s2.employmentType)}</td></tr>
-        <tr><th>Company Name</th><td>${safe(s2.companyName)}</td></tr>
-        <tr><th>Monthly Income</th><td>${formatCurrency(s2.monthlyIncome)}</td></tr>
-        <tr><th>Work Experience</th><td>${safe(s2.workExperience)}</td></tr>
-      </table>
-
-      <div class="section-title">Step 3 - Loan Details</div>
-      <table>
-        <tr><th>Loan Type</th><td>${safe(s3.loanType)}</td></tr>
-        <tr><th>Loan Amount</th><td>${formatCurrency(s3.loanAmount)}</td></tr>
-        <tr><th>Tenure</th><td>${safe(s3.tenure)} months</td></tr>
-        <tr><th>Interest Rate</th><td>${safe(s3.interestRate)}%</td></tr>
-        <tr><th>Estimated EMI</th><td>${formatCurrency(s3.emi)}</td></tr>
-        <tr><th>Loan Purpose</th><td>${safe(s3.purpose)}</td></tr>
-      </table>
-
-      <div class="section-title">Bank Details</div>
-      <table>
-        <tr><th>Primary Bank</th><td>${safe(s3.primaryBank)}</td></tr>
-        <tr><th>Account Number</th><td>${safe(s3.accountNumber)}</td></tr>
-        <tr><th>IFSC Code</th><td>${safe(s3.ifsc)}</td></tr>
-      </table>
-
-      <div class="section-title">Step 4 - Review / Declarations</div>
-      <table>
-        <tr><th>PAN</th><td>${safe(s4.pan)}</td></tr>
-        <tr><th>Aadhaar</th><td>${safe(s4.aadhaar)}</td></tr>
         <tr>
-          <th>Terms Accepted</th>
-          <td>
-            <span class="badge">${s4.agreedToTerms ? "Yes" : "No"}</span>
-          </td>
+          <td class="sr">2</td>
+          <td class="label">Requested Loan Amount</td>
+          <td colspan="3" class="value">${formatCurrency(s3.loanAmount)}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">3</td>
+          <td class="label">Loan Purpose</td>
+          <td colspan="3" class="normal-value">${safe(s3.purpose)}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">4</td>
+          <td class="label"> Loan Term / Tenure</td>
+          <td colspan="3" class="value">${safe(s3.tenure)} ${s3.tenure ? "months" : ""}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">5</td>
+          <td class="label">Existing EMI</td>
+          <td colspan="3" class="value">${formatCurrency(s3.emi)}</td>
+        </tr>
+
+        <tr>
+          <td class="sr"></td>
+          <td class="label">Bank</td>
+          <td class="value">BANK NAME / BRANCH</td>
+          <td class="value">ACCOUNT NUMBER</td>
+          <td class="value">IFSC CODE</td>
+        </tr>
+
+        <tr>
+          <td class="sr"></td>
+          <td class="label">Bank Details</td>
+          <td class="value">${safe(s3.primaryBank)}</td>
+          <td class="value">${safe(s3.accountNumber)}</td>
+          <td class="value">${safe(s3.ifsc)}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">6</td>
+          <td class="label">Interest Rate (%)</td>
+          <td colspan="3" class="value">${safe(s3.interestRate)}${s3.interestRate ? "%" : ""}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">7</td>
+          <td class="label">Applicant Name</td>
+          <td colspan="3" class="value">${safe(s1.fullName)}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">8</td>
+          <td class="label">Email</td>
+          <td colspan="3" class="normal-value">${safe(s1.email)}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">9</td>
+          <td class="label">Mobile Number</td>
+          <td colspan="3" class="value">${safe(s1.phone)}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">10</td>
+          <td class="label">Date of Birth</td>
+          <td class="value">${safe(s1.dob)}</td>
+          <td class="label">Gender</td>
+          <td class="value">${safe(s1.gender)}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">11</td>
+          <td class="label">Address</td>
+          <td colspan="3" class="normal-value">${safe(fullAddress)}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">12</td>
+          <td class="label">Company Name</td>
+          <td class="value">${safe(s2.companyName)}</td>
+          <td class="label">Monthly Income</td>
+          <td class="value">${formatCurrency(s2.monthlyIncome)}</td>
+        </tr>
+
+        <tr>
+  <td class="sr">13</td>
+  <td class="label">CIBIL Score</td>
+  <td colspan="3" class="value">${safe(s2.workExperience)}</td>
+</tr>
+
+        <tr>
+          <td class="sr">14</td>
+          <td class="label">PAN Number</td>
+          <td class="value">${safe(s4.pan)}</td>
+          <td class="label">Aadhaar Number</td>
+          <td class="value">${safe(s4.aadhaar)}</td>
+        </tr>
+
+        <tr>
+          <td class="sr">15</td>
+          <td class="label">Terms Accepted</td>
+          <td colspan="3" class="value">${s4.agreedToTerms ? "YES" : "NO"}</td>
         </tr>
       </table>
 
-      <div class="footer">
-        This document is a downloadable review summary of the details entered by the applicant in the loan application form.
-        It is intended for user review and record keeping.
+      <div class="charges">
+        <div class="sub-heading">Declaration</div>
+        <ul>
+          <li>I confirm that the information provided in this application form is true and accurate.</li>
+          <li>I understand that incorrect or incomplete details may lead to rejection of the loan application.</li>
+          <li>This document is generated from the details entered by the applicant in the loan application form.</li>
+          <li><b>Processing, verification, approval and disbursal are subject to internal policy and document verification.</b></li>
+        </ul>
+
+        <p><b>Applicant Details</b> shall mean the personal, loan, income, bank and KYC details submitted by the borrower.</p>
+        <p><b>Loan Application</b> shall mean the request submitted by the borrower for processing of the selected loan product.</p>
+      </div>
+
+      <div class="thank-you">
+        Thanking You,<br/>
+        <span class="jio-circle" style="margin-top: 10px;">Jio</span>
+        <br/><br/>
+        Financial Services Private Limited
+      </div>
+
+      <div class="signature">
+        <div class="signed">Digitally Signed</div>
+        <div><b>Digitally Signed by Jio Financial Services Private Limited ${safe(data.applicationDate)}</b></div>
+      </div>
+
+      <div class="bottom-bar footer-brand"></div>
+
+      <div class="brand-row">
+        <div class="brand-left">
+          <span class="jio-circle">Jio</span>
+          <span class="brand-name">Finance</span>
+        </div>
+
+        <div class="brand-right">
+          <span class="jio-circle">Jio</span>
+          <span class="company-name">Financial Services Private Limited</span>
+        </div>
       </div>
     </body>
   </html>
@@ -259,6 +469,7 @@ export const generateAndShareLoanApplicationPdf = async (
   });
 
   const canShare = await Sharing.isAvailableAsync();
+
   if (canShare) {
     await Sharing.shareAsync(uri, {
       mimeType: "application/pdf",

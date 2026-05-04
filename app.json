@@ -20,7 +20,8 @@
       "output": "static"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -29,9 +30,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "3b387dc3-176a-4702-974c-62ea113a9141"
+        "projectId": "a128c658-ea4f-4bcb-8993-ea0ca7099e9c"
       }
     },
-    "owner": "anik8"
+    "owner": "tanisha.appdev"
   }
 }

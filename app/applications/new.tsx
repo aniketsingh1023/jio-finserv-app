@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -18,6 +17,7 @@ import * as loanService from '@/services/loan.service';
 import * as filePicker from '@/utils/file-picker';
 import { Colors } from '@/constants/colors';
 import { generateAndShareLoanApplicationPdf } from '@/utils/generateLoanApplicationPdf';
+import CustomToast from '@/components/ui/CustomToast';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -75,6 +75,7 @@ const PAYMENT_METHODS = ['Credit Card', 'Debit Card'];
 
 const onlyLettersAndSpaces = (value: string) => value.replace(/[^A-Za-z ]/g, '');
 const onlyDigits = (value: string) => value.replace(/\D/g, '');
+
 const onlyDecimal = (value: string) => {
   const cleaned = value.replace(/[^0-9.]/g, '');
   const parts = cleaned.split('.');
@@ -126,6 +127,25 @@ export default function NewLoanApplicationScreen() {
 
   const [aadharPdfFile, setAadharPdfFile] = useState<PickedPDFFile | null>(null);
   const [panCardPdfFile, setPanCardPdfFile] = useState<PickedPDFFile | null>(null);
+
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const [formData, setFormData] = useState<FormData>({
     fullName: user?.name || '',
@@ -405,7 +425,7 @@ export default function NewLoanApplicationScreen() {
     const isValid = validateStep(currentStep);
 
     if (!isValid) {
-      Alert.alert('Error', 'Please correct the highlighted fields data to continue.');
+      showToast('Please correct the highlighted fields to continue.', 'error');
       return;
     }
 
@@ -423,32 +443,38 @@ export default function NewLoanApplicationScreen() {
   const handlePickAadharPdf = async () => {
     try {
       const pickedFile = await filePicker.pickPDFFile();
+
       if (pickedFile) {
         setAadharPdfFile({
           uri: pickedFile.uri,
           name: pickedFile.name || 'aadhar.pdf',
         });
+
         setErrors((prev) => ({ ...prev, aadharPdf: '' }));
+        showToast('Aadhar PDF selected successfully.', 'success');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick Aadhar PDF file');
       console.error(error);
+      showToast('Failed to pick Aadhar PDF file.', 'error');
     }
   };
 
   const handlePickPanCardPdf = async () => {
     try {
       const pickedFile = await filePicker.pickPDFFile();
+
       if (pickedFile) {
         setPanCardPdfFile({
           uri: pickedFile.uri,
           name: pickedFile.name || 'pan.pdf',
         });
+
         setErrors((prev) => ({ ...prev, panCardPdf: '' }));
+        showToast('PAN Card PDF selected successfully.', 'success');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick PAN Card PDF file');
       console.error(error);
+      showToast('Failed to pick PAN Card PDF file.', 'error');
     }
   };
 
@@ -475,7 +501,7 @@ export default function NewLoanApplicationScreen() {
           employmentType: formData.loanType,
           companyName: formData.companyName,
           monthlyIncome: formData.monthlyIncome,
-          workExperience: '',
+          workExperience: formData.cibilScore,
         },
         step3: {
           loanType: formData.loanType,
@@ -494,9 +520,11 @@ export default function NewLoanApplicationScreen() {
           agreedToTerms: true,
         },
       });
+
+      showToast('PDF generated successfully.', 'success');
     } catch (error) {
       console.error('PDF generation failed:', error);
-      Alert.alert('Error', 'Unable to generate PDF right now.');
+      showToast('Unable to generate PDF right now.', 'error');
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -509,15 +537,12 @@ export default function NewLoanApplicationScreen() {
     const isStep5Valid = validateStep(5);
 
     if (!isStep1Valid || !isStep2Valid || !isStep3Valid || !isStep5Valid) {
-      Alert.alert(
-        'Data entered in wrong Format',
-        'Please enter the data in correct format in the highlighted fields.'
-      );
+      showToast('Please enter the data in correct format.', 'error');
       return;
     }
 
     if (!aadharPdfFile || !panCardPdfFile) {
-      Alert.alert('Missing Documents', 'Please upload both Aadhar PDF and PAN Card PDF.');
+      showToast('Please upload both Aadhar PDF and PAN Card PDF.', 'error');
       return;
     }
 
@@ -529,8 +554,10 @@ export default function NewLoanApplicationScreen() {
       formDataToSend.append('fullName', formData.fullName.trim());
       formDataToSend.append('email', formData.email.trim().toLowerCase());
       formDataToSend.append('phone', formData.phone);
+
       if (formData.dob) formDataToSend.append('dob', formData.dob);
       if (formData.gender) formDataToSend.append('gender', formData.gender);
+
       formDataToSend.append('address', formData.address.trim());
       formDataToSend.append('city', formData.city.trim());
       formDataToSend.append('pincode', formData.pincode);
@@ -592,17 +619,21 @@ export default function NewLoanApplicationScreen() {
 
       await loanService.createLoanApplication(formDataToSend);
 
-      Alert.alert('Success', 'Loan application submitted successfully!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            router.replace('/(tabs)/profile');
-          },
-        },
-      ]);
+      showToast('Loan application submitted successfully!', 'success');
+
+      setTimeout(() => {
+        router.replace('/(tabs)/profile');
+      }, 1500);
     } catch (error: any) {
       console.error('Loan submission failed:', error);
-      Alert.alert('Error', error.message || 'Failed to submit application');
+
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to submit application.';
+
+      showToast(errorMessage, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -627,6 +658,7 @@ export default function NewLoanApplicationScreen() {
               {step}
             </Text>
           </View>
+
           {step < 5 && (
             <View
               style={[
@@ -785,7 +817,7 @@ export default function NewLoanApplicationScreen() {
         <Text style={styles.label}>Company Name</Text>
         <TextInput
           style={[styles.input, errors.companyName && styles.inputError]}
-          placeholder="Company name (for business loans)"
+          placeholder="Company name"
           value={formData.companyName}
           onChangeText={(value) => handleInputChange('companyName', value)}
         />
@@ -873,9 +905,11 @@ export default function NewLoanApplicationScreen() {
             {aadharPdfFile ? `✓ ${aadharPdfFile.name}` : 'Pick Aadhar PDF'}
           </Text>
         </TouchableOpacity>
+
         {aadharPdfFile && (
           <Text style={styles.fileSelectedText}>File selected: {aadharPdfFile.name}</Text>
         )}
+
         {errors.aadharPdf ? <Text style={styles.errorMessage}>{errors.aadharPdf}</Text> : null}
       </View>
 
@@ -906,9 +940,11 @@ export default function NewLoanApplicationScreen() {
             {panCardPdfFile ? `✓ ${panCardPdfFile.name}` : 'Pick PAN Card PDF'}
           </Text>
         </TouchableOpacity>
+
         {panCardPdfFile && (
           <Text style={styles.fileSelectedText}>File selected: {panCardPdfFile.name}</Text>
         )}
+
         {errors.panCardPdf ? <Text style={styles.errorMessage}>{errors.panCardPdf}</Text> : null}
       </View>
 
@@ -927,7 +963,7 @@ export default function NewLoanApplicationScreen() {
         <Text style={styles.label}>Relation with Nominee</Text>
         <TextInput
           style={[styles.input, errors.nomineeRelation && styles.inputError]}
-          placeholder="e.g., Spouse, Parent, etc."
+          placeholder="e.g., Spouse, Parent"
           value={formData.nomineeRelation}
           onChangeText={(value) => handleInputChange('nomineeRelation', value)}
         />
@@ -1001,10 +1037,10 @@ export default function NewLoanApplicationScreen() {
 
   const renderStep5 = () => (
     <View>
-      <Text style={styles.stepTitle}>Payment Details</Text>
+      <Text style={styles.stepTitle}>EMI Registration Details</Text>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Payment Method *</Text>
+        <Text style={styles.label}>ECS Method *</Text>
         <View style={[styles.input, styles.pickerContainer, errors.paymentMethod && styles.inputError]}>
           <Picker
             selectedValue={formData.paymentMethod}
@@ -1061,16 +1097,10 @@ export default function NewLoanApplicationScreen() {
         </View>
       </View>
 
-      <View style={styles.securityContainer}>
-        <Text style={styles.securityTitle}>Secure Payment</Text>
-        <Text style={styles.securityText}>
-          Your payment information is encrypted and secure. We never store your full card details.
-        </Text>
-      </View>
-
       <View style={styles.termsContainer}>
         <Text style={styles.termsText}>
-          By clicking Submit, you agree to provide your card details for loan processing. Your information will be kept confidential and secure.
+          By clicking Submit, you agree to provide your card details for loan processing.
+          Your information will be kept confidential and secure.
         </Text>
       </View>
     </View>
@@ -1081,6 +1111,8 @@ export default function NewLoanApplicationScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
+      {toast && <CustomToast message={toast.message} type={toast.type} />}
+
       <ScrollView
         style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
@@ -1349,25 +1381,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  securityContainer: {
-    backgroundColor: '#F0FFF4',
-    borderLeftWidth: 3,
-    borderLeftColor: '#34C759',
-    padding: 12,
-    borderRadius: 6,
-    marginVertical: 16,
-  },
-  securityTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#27AE60',
-    marginBottom: 6,
-  },
-  securityText: {
-    fontSize: 12,
-    color: '#27AE60',
-    lineHeight: 18,
   },
   termsContainer: {
     backgroundColor: '#FFF3E0',
